@@ -1,154 +1,192 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './index.css';
 
+// In development the Vite proxy rewrites /api → http://localhost:8000
+// In production set VITE_API_BASE_URL=https://your-backend.onrender.com
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+  ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '')
+  : '/api';
+
+// ---------------------------------------------------------------------------
+// Main App
+// ---------------------------------------------------------------------------
+
 function App() {
-  const [teams, setTeams] = useState([]);
-  const [homeTeam, setHomeTeam] = useState('');
-  const [awayTeam, setAwayTeam] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [teams, setTeams]         = useState([]);
+  const [homeTeam, setHomeTeam]   = useState('');
+  const [awayTeam, setAwayTeam]   = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [fetchingTeams, setFetchingTeams] = useState(true);
+  const [error, setError]         = useState(null);
   const [prediction, setPrediction] = useState(null);
 
+  // ── Fetch team list on mount ──────────────────────────────────────────────
   useEffect(() => {
-    // Fetch available teams
-    fetch('http://localhost:8000/teams')
-      .then(res => res.json())
-      .then(data => {
-        if(data.teams) {
-            setTeams(data.teams);
-            if(data.teams.length > 1) {
-                setHomeTeam(data.teams[0]);
-                setAwayTeam(data.teams[1]);
-            }
+    setFetchingTeams(true);
+    fetch(`${API_BASE}/teams`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const list = data.teams ?? [];
+        setTeams(list);
+        if (list.length >= 2) {
+          setHomeTeam(list[0]);
+          setAwayTeam(list[1]);
         }
       })
-      .catch(err => {
-        console.error("Error fetching teams:", err);
-        setError("Could not connect to the backend server. Make sure it is running.");
-      });
+      .catch((err) => {
+        console.error('Error fetching teams:', err);
+        setError('Could not connect to the backend. Make sure it is running on port 8000.');
+      })
+      .finally(() => setFetchingTeams(false));
   }, []);
 
-  const handlePredict = async (e) => {
+  // ── Predict handler ───────────────────────────────────────────────────────
+  const handlePredict = useCallback(async (e) => {
     e.preventDefault();
+    setError(null);
+    setPrediction(null);
+
     if (homeTeam === awayTeam) {
-      setError("Home and Away teams cannot be the same.");
+      setError('Home and Away teams cannot be the same.');
       return;
     }
 
     setLoading(true);
-    setError(null);
-    setPrediction(null);
-
     try {
-      const response = await fetch('http://localhost:8000/predict', {
+      const res = await fetch(`${API_BASE}/predict`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam }),
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || 'Failed to fetch prediction');
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.detail ?? `Request failed (${res.status})`);
       }
 
-      const data = await response.json();
+      const data = await res.json();
       setPrediction(data);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [homeTeam, awayTeam]);
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="app-container">
       <h1 className="title">AI Match Predictor</h1>
-      
+
       <div className="glass-card">
         <form className="prediction-form" onSubmit={handlePredict}>
           <div className="team-selectors">
-            <div className="input-group">
-              <label>Home Team</label>
-              <select 
-                value={homeTeam} 
-                onChange={(e) => setHomeTeam(e.target.value)}
-                required
-              >
-                {teams.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            
+            <TeamSelect
+              label="Home Team"
+              value={homeTeam}
+              teams={teams}
+              loading={fetchingTeams}
+              onChange={setHomeTeam}
+            />
+
             <div className="vs-badge">VS</div>
-            
-            <div className="input-group">
-              <label>Away Team</label>
-              <select 
-                value={awayTeam} 
-                onChange={(e) => setAwayTeam(e.target.value)}
-                required
-              >
-                {teams.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
+
+            <TeamSelect
+              label="Away Team"
+              value={awayTeam}
+              teams={teams}
+              loading={fetchingTeams}
+              onChange={setAwayTeam}
+            />
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className="error-message" role="alert">{error}</div>}
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className={`submit-btn ${loading ? 'loading' : ''}`}
-            disabled={loading || teams.length === 0}
+            disabled={loading || fetchingTeams || teams.length === 0}
           >
             {loading ? '' : 'Predict Match Outcome'}
           </button>
         </form>
 
         {prediction && (
-          <div className="results-container">
-            <div className="prediction-winner">
-              Predicted Winner: <span className="winner-highlight">{prediction.prediction}</span>
-            </div>
-            
-            <div className="bars-container">
-              <ProgressBar 
-                label={`Home Win (${homeTeam})`} 
-                value={prediction.home_win_probability} 
-                type="home" 
-              />
-              <ProgressBar 
-                label="Draw" 
-                value={prediction.draw_probability} 
-                type="draw" 
-              />
-              <ProgressBar 
-                label={`Away Win (${awayTeam})`} 
-                value={prediction.away_win_probability} 
-                type="away" 
-              />
-            </div>
-          </div>
+          <Results
+            prediction={prediction}
+            homeTeam={homeTeam}
+            awayTeam={awayTeam}
+          />
         )}
       </div>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
+function TeamSelect({ label, value, teams, loading, onChange }) {
+  return (
+    <div className="input-group">
+      <label>{label}</label>
+      {loading ? (
+        <div className="select-placeholder">Loading teams …</div>
+      ) : (
+        <select value={value} onChange={(e) => onChange(e.target.value)} required>
+          {teams.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
+function Results({ prediction, homeTeam, awayTeam }) {
+  return (
+    <div className="results-container">
+      <div className="prediction-winner">
+        Predicted Outcome:{' '}
+        <span className="winner-highlight">{prediction.prediction}</span>
+      </div>
+
+      <div className="bars-container">
+        <ProgressBar
+          label={`Home Win (${homeTeam})`}
+          value={prediction.home_win_probability}
+          type="home"
+        />
+        <ProgressBar
+          label="Draw"
+          value={prediction.draw_probability}
+          type="draw"
+        />
+        <ProgressBar
+          label={`Away Win (${awayTeam})`}
+          value={prediction.away_win_probability}
+          type="away"
+        />
+      </div>
+    </div>
+  );
+}
+
 function ProgressBar({ label, value, type }) {
-  const percentage = (value * 100).toFixed(1);
-  
+  const pct = (Math.min(Math.max(value, 0), 1) * 100).toFixed(1);
+
   return (
     <div className={`bar-wrapper ${type}-bar`}>
       <div className="bar-labels">
         <span>{label}</span>
-        <span>{percentage}%</span>
+        <span>{pct}%</span>
       </div>
-      <div className="progress-bg">
-        <div 
-          className="progress-fill" 
-          style={{ width: `${percentage}%` }}
-        ></div>
+      <div className="progress-bg" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100">
+        <div className="progress-fill" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

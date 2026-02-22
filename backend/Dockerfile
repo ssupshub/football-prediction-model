@@ -1,24 +1,27 @@
-# Use official Python runtime as a parent image
+# ── Build stage ─────────────────────────────────────────────────────────────
 FROM python:3.10-slim
 
-# Set working directory
 WORKDIR /app
 
-# Copy the requirements file into the container at /app
-COPY requirements.txt .
+# Install OS-level build tools needed by some Python wheels (e.g. xgboost)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install any needed packages specified in requirements.txt
+# Install Python dependencies first (layer cache friendly)
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the current directory contents into the container at /app
+# Copy application source
 COPY . .
 
-# Generate data and train the model during build (Or you can supply pre-trained pkl files)
+# Generate synthetic data & train models at image-build time.
+# Pre-built .pkl artefacts are baked into the image so the container
+# starts instantly without re-training.
 RUN python data_generator.py
 RUN python model_training.py
 
-# Make port 8000 available to the world outside this container
 EXPOSE 8000
 
-# Run FastAPI application
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

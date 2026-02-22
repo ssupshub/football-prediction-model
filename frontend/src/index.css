@@ -11,7 +11,9 @@
   --glow: rgba(0, 255, 136, 0.3);
 }
 
-* {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -36,7 +38,8 @@ body {
   padding: 2rem;
 }
 
-/* Glassmorphism Container */
+/* ── Layout ────────────────────────────────────────────────────────────── */
+
 .app-container {
   display: flex;
   flex-direction: column;
@@ -51,9 +54,11 @@ body {
   background: linear-gradient(90deg, var(--primary), var(--secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 1rem;
-  text-shadow: 0 0 20px var(--glow);
 }
+
+/* ── Glass card ─────────────────────────────────────────────────────────── */
 
 .glass-card {
   background: var(--card-bg);
@@ -65,17 +70,16 @@ body {
   width: 100%;
   max-width: 800px;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .glass-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-4px);
   box-shadow: 0 12px 40px 0 rgba(0, 255, 136, 0.15);
 }
 
-/* Form Elements */
+/* ── Form ───────────────────────────────────────────────────────────────── */
+
 .prediction-form {
   display: flex;
   flex-direction: column;
@@ -85,12 +89,19 @@ body {
 .team-selectors {
   display: flex;
   gap: 2rem;
+  align-items: flex-end;
   justify-content: space-between;
 }
 
 @media (max-width: 600px) {
   .team-selectors {
     flex-direction: column;
+  }
+  .vs-badge {
+    padding-top: 0 !important;
+  }
+  .title {
+    font-size: 2rem;
   }
 }
 
@@ -108,7 +119,8 @@ body {
   letter-spacing: 1px;
 }
 
-select {
+select,
+.select-placeholder {
   background: rgba(0, 0, 0, 0.3);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -116,14 +128,15 @@ select {
   border-radius: 12px;
   font-size: 1.1rem;
   outline: none;
-  transition:
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+select {
   cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
   background-repeat: no-repeat;
-  background-position: right 1rem top 50%;
+  background-position: right 1rem center;
   background-size: 0.65rem auto;
 }
 
@@ -137,6 +150,11 @@ select option {
   color: white;
 }
 
+.select-placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .vs-badge {
   display: flex;
   align-items: center;
@@ -144,8 +162,11 @@ select option {
   font-weight: 700;
   font-size: 1.5rem;
   color: var(--secondary);
-  padding-top: 1.5rem;
+  padding-bottom: 0.1rem; /* align with select bottom */
+  min-width: 3rem;
 }
+
+/* ── Submit button ──────────────────────────────────────────────────────── */
 
 .submit-btn {
   background: linear-gradient(90deg, var(--primary), var(--secondary));
@@ -156,25 +177,24 @@ select option {
   font-size: 1.2rem;
   font-weight: 700;
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-  margin-top: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-top: 0.5rem;
+  position: relative;
 }
 
-.submit-btn:hover {
+.submit-btn:hover:not(:disabled) {
   transform: scale(1.02);
   box-shadow: 0 0 25px var(--glow);
 }
 
 .submit-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
   transform: none;
 }
 
+/* Spinner when loading */
 .submit-btn.loading {
-  position: relative;
   color: transparent;
 }
 
@@ -188,18 +208,17 @@ select option {
   margin-top: -12px;
   margin-left: -12px;
   border: 3px solid rgba(0, 0, 0, 0.3);
-  border-top-color: black;
+  border-top-color: #000;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-/* Results Display */
+/* ── Results ────────────────────────────────────────────────────────────── */
+
 .results-container {
   margin-top: 2rem;
   padding-top: 2rem;
@@ -208,19 +227,13 @@ select option {
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .prediction-winner {
   text-align: center;
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 600;
   margin-bottom: 2rem;
 }
@@ -278,12 +291,13 @@ select option {
   box-shadow: 0 0 10px rgba(0, 184, 255, 0.5);
 }
 
+/* ── Error message ──────────────────────────────────────────────────────── */
+
 .error-message {
   color: #ff4d4d;
   background: rgba(255, 77, 77, 0.1);
   padding: 1rem;
   border-radius: 8px;
   text-align: center;
-  margin-top: 1rem;
   border: 1px solid rgba(255, 77, 77, 0.3);
 }

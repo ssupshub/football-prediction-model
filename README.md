@@ -1,56 +1,109 @@
 # AI Football Match Predictor
 
-An end-to-end Machine Learning football outcome prediction system. It features advanced modeling (Random Forest, XGBoost, Poisson Distributions, ELO systems) built with Python and FastAPI, served via a beautiful glassmorphism React GUI.
+An end-to-end Machine Learning football outcome prediction system featuring:
+
+- **Models**: Logistic Regression, Random Forest, XGBoost (best F1 score wins)
+- **Features**: ELO ratings, rolling form, average goals scored/conceded
+- **Simulation**: Poisson distribution goal model (standalone helper)
+- **Backend**: Python 3.10 + FastAPI
+- **Frontend**: React 19 + Vite with glassmorphism UI
+
+---
 
 ## Project Structure
 
-- **/backend**: Python FastAPI application exposing the ML model endpoints.
-- **/frontend**: React/Vite frontend application.
+```
+.
+├── backend/
+│   ├── data_generator.py   # Generates synthetic historical data
+│   ├── model_training.py   # Trains & evaluates all models; saves best
+│   ├── main.py             # FastAPI application
+│   ├── utils.py            # ELO calculation helper
+│   ├── requirements.txt    # All Python dependencies (incl. ML libs)
+│   └── Dockerfile
+└── frontend/
+    ├── src/
+    │   ├── App.jsx         # Main React component
+    │   └── index.css       # Glassmorphism styles
+    ├── vite.config.js      # Dev proxy → localhost:8000
+    ├── .env.example        # Copy to .env for production URL
+    └── package.json
+```
+
+---
 
 ## Local Setup & Development
 
 ### Backend
 
-1. Navigate to the `backend` directory: `cd backend`
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: .\venv\Scripts\activate
-   ```
-3. Install dependencies: `pip install -r requirements.txt`
-4. Generate the mock historical dataset: `python data_generator.py`
-5. Train the Machine Learning models: `python model_training.py`
-6. Start the FastAPI server: `uvicorn main:app --reload`
-   - API will be live at `http://localhost:8000`
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate        # Windows: .\venv\Scripts\activate
+
+pip install -r requirements.txt  # Installs FastAPI, sklearn, xgboost, pandas …
+python data_generator.py         # Creates football_data.csv
+python model_training.py         # Trains models, saves .pkl files
+uvicorn main:app --reload        # API live at http://localhost:8000
+```
 
 ### Frontend
 
-1. Navigate to the `frontend` directory: `cd frontend`
-2. Install dependencies: `npm install`
-3. Start the Vite development server: `npm run dev`
-   - Application will be live at `http://localhost:5173`
+```bash
+cd frontend
+npm install
+npm run dev       # App live at http://localhost:5173
+```
 
-## Deployment Instructions
+The Vite dev server proxies `/api/*` → `http://localhost:8000/*` automatically —
+no CORS issues and no hardcoded URLs needed during development.
+
+---
+
+## Deployment
 
 ### Backend (Render / Docker)
 
-The backend is Dockerized and ready for deployment on services like Render.
+1. Push code to GitHub.
+2. Render Dashboard → **New → Web Service → Docker**.
+3. Connect repo; Render uses the `Dockerfile` automatically.
+4. The image builds, generates data, trains models, then starts Uvicorn on port 8000.
 
-1. **GitHub**: Push your code to a GitHub repository.
-2. **Render Dashbaord**: Log into Render and click **New > Web Service**.
-3. **Connect Repo**: Connect your GitHub repository.
-4. **Environment**: Choose **Docker** as the Environment.
-5. **Build & Deploy**: Render will automatically use the provided `Dockerfile` to install dependencies, generate data, train the models, and expose the FastAPI service on Port 8000.
-   - _Note_: Ensure you update the frontend `fetch` URLs in `App.jsx` to point to your new Render URL once deployed.
+> **Optional env vars you can set in Render:**
+> - `ALLOWED_ORIGINS` — comma-separated list of allowed frontend origins (default `*`)
 
 ### Frontend (Vercel)
 
-The Vite/React frontend is optimized for zero-config Vercel deployment.
+1. Vercel Dashboard → **Add New → Project → Import repo**.
+2. Set **Root Directory** to `frontend`.
+3. Add environment variable:
+   ```
+   VITE_API_BASE_URL=https://your-backend.onrender.com
+   ```
+4. Deploy — Vercel detects Vite automatically.
 
-1. **Vercel Dashboard**: Log into Vercel and click **Add New > Project**.
-2. **Import**: Import the GitHub repository containing this project.
-3. **Framework Preset**: Vercel should automatically detect it as a **Vite** project.
-4. **Root Directory**: Click "Edit" on Root Directory and select the `frontend` folder.
-5. **Deploy**: Click Deploy. Vercel will run `npm run build` and publish your premium UI instantly.
+---
 
-> **Important Setup Note**: Before deploying the frontend to production, make sure to update the API endpoints in `frontend/src/App.jsx` from `http://localhost:8000` to your live rendered backend URL!
+## API Reference
+
+| Method | Endpoint  | Description                     |
+|--------|-----------|----------------------------------|
+| GET    | `/`       | Health check                     |
+| GET    | `/health` | Model readiness + team count     |
+| GET    | `/teams`  | List all available teams         |
+| POST   | `/predict`| Predict match outcome            |
+
+### POST `/predict`
+
+```json
+// Request
+{ "home_team": "Arsenal", "away_team": "Liverpool" }
+
+// Response
+{
+  "home_win_probability": 0.42,
+  "draw_probability": 0.24,
+  "away_win_probability": 0.34,
+  "prediction": "Home Win"
+}
+```
