@@ -1,4 +1,4 @@
-def calculate_elo(old_elo_home: float, old_elo_away: float, result: float, k_factor: int = 20) -> tuple[float, float]:
+def calculate_elo(old_elo_home: float, old_elo_away: float, result: float, k_factor: int = 20) -> tuple:
     """
     Calculate new ELO ratings after a match.
     result: 1 for Home Win, 0.5 for Draw, 0 for Away Win
