@@ -1,14 +1,16 @@
-/* index.css */
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap");
 
 :root {
-  --primary: #00ff88;
-  --secondary: #00b8ff;
-  --bg-dark: #0a0e17;
-  --card-bg: rgba(255, 255, 255, 0.05);
-  --text-main: #ffffff;
+  --primary:    #00ff88;
+  --secondary:  #00b8ff;
+  --bg-dark:    #0a0e17;
+  --card-bg:    rgba(255, 255, 255, 0.05);
+  --text-main:  #ffffff;
   --text-muted: #a0aec0;
-  --glow: rgba(0, 255, 136, 0.3);
+  --glow:       rgba(0, 255, 136, 0.3);
+  --home-color: #ff4081;
+  --away-color: #00b8ff;
+  --draw-color: #a0aec0;
 }
 
 *,
@@ -38,13 +40,13 @@ body {
   padding: 2rem;
 }
 
-/* ── Layout ────────────────────────────────────────────────────────────── */
+/* ── Layout ─────────────────────────────────────────────────────────────── */
 
 .app-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 1.2rem;
 }
 
 .title {
@@ -55,10 +57,17 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  margin-bottom: 1rem;
 }
 
-/* ── Glass card ─────────────────────────────────────────────────────────── */
+.subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  letter-spacing: 0.5px;
+  margin-top: -0.4rem;
+}
+
+/* ── Glass card ──────────────────────────────────────────────────────────── */
 
 .glass-card {
   background: var(--card-bg);
@@ -69,16 +78,16 @@ body {
   padding: 2.5rem;
   width: 100%;
   max-width: 800px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .glass-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px 0 rgba(0, 255, 136, 0.15);
+  box-shadow: 0 12px 40px rgba(0, 255, 136, 0.15);
 }
 
-/* ── Form ───────────────────────────────────────────────────────────────── */
+/* ── Form ────────────────────────────────────────────────────────────────── */
 
 .prediction-form {
   display: flex;
@@ -94,15 +103,9 @@ body {
 }
 
 @media (max-width: 600px) {
-  .team-selectors {
-    flex-direction: column;
-  }
-  .vs-badge {
-    padding-top: 0 !important;
-  }
-  .title {
-    font-size: 2rem;
-  }
+  .team-selectors { flex-direction: column; }
+  .vs-badge       { padding-bottom: 0 !important; }
+  .title          { font-size: 2rem; }
 }
 
 .input-group {
@@ -162,11 +165,11 @@ select option {
   font-weight: 700;
   font-size: 1.5rem;
   color: var(--secondary);
-  padding-bottom: 0.1rem; /* align with select bottom */
   min-width: 3rem;
+  padding-bottom: 0.1rem;
 }
 
-/* ── Submit button ──────────────────────────────────────────────────────── */
+/* ── Submit button ───────────────────────────────────────────────────────── */
 
 .submit-btn {
   background: linear-gradient(90deg, var(--primary), var(--secondary));
@@ -193,10 +196,7 @@ select option {
   transform: none;
 }
 
-/* Spinner when loading */
-.submit-btn.loading {
-  color: transparent;
-}
+.submit-btn.loading { color: transparent; }
 
 .submit-btn.loading::after {
   content: "";
@@ -213,11 +213,9 @@ select option {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Results ────────────────────────────────────────────────────────────── */
+/* ── Results ─────────────────────────────────────────────────────────────── */
 
 .results-container {
   margin-top: 2rem;
@@ -235,14 +233,55 @@ select option {
   text-align: center;
   font-size: 1.8rem;
   font-weight: 600;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .winner-highlight {
-  color: var(--primary);
-  text-shadow: 0 0 10px var(--glow);
+  font-weight: 700;
+  text-shadow: 0 0 12px currentColor;
 }
 
+/* ELO row */
+.elo-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.2rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.elo-sep {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.elo-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.elo-team {
+  font-size: 0.8rem;
+  font-weight: 600;
+  max-width: 130px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.elo-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+/* Progress bars */
 .bars-container {
   display: flex;
   flex-direction: column;
@@ -291,7 +330,7 @@ select option {
   box-shadow: 0 0 10px rgba(0, 184, 255, 0.5);
 }
 
-/* ── Error message ──────────────────────────────────────────────────────── */
+/* ── Error ───────────────────────────────────────────────────────────────── */
 
 .error-message {
   color: #ff4d4d;
