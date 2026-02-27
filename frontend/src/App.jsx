@@ -21,13 +21,22 @@ function App() {
   useEffect(() => {
     setFetchingTeams(true);
     fetch(`${API_BASE}/teams`)
-      .then(r => { if (!r.ok) throw new Error(`Server error ${r.status}`); return r.json(); })
+      .then(r => {
+        if (!r.ok) throw new Error(`Server error ${r.status}`);
+        return r.json();
+      })
       .then(data => {
         const list = data.teams ?? [];
         setTeams(list);
-        if (list.length >= 2) { setHomeTeam(list[0]); setAwayTeam(list[1]); }
+        if (list.length >= 2) {
+          setHomeTeam(list[0]);
+          setAwayTeam(list[1]);
+        }
       })
-      .catch(() => setError('Could not connect to the backend. Make sure it is running on port 8000.'))
+      // FIX: capture the actual error message instead of discarding it
+      .catch(err => setError(
+        `Could not connect to the backend: ${err.message}. Make sure it is running on port 8000.`
+      ))
       .finally(() => setFetchingTeams(false));
   }, []);
 
@@ -35,7 +44,12 @@ function App() {
     e.preventDefault();
     setError(null);
     setPrediction(null);
-    if (homeTeam === awayTeam) { setError('Home and Away teams cannot be the same.'); return; }
+
+    if (homeTeam === awayTeam) {
+      setError('Home and Away teams cannot be the same.');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/predict`, {
@@ -43,10 +57,19 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam }),
       });
+
       if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.detail ?? `Error ${res.status}`);
+        // FIX: safely parse error JSON, fallback to status text
+        let detail = `Error ${res.status}`;
+        try {
+          const errBody = await res.json();
+          detail = errBody.detail ?? detail;
+        } catch {
+          // JSON parse failed — keep the status code message
+        }
+        throw new Error(detail);
       }
+
       setPrediction(await res.json());
     } catch (err) {
       setError(err.message);
@@ -63,6 +86,7 @@ function App() {
       </p>
 
       <div className="glass-card">
+        {/* FIX: onSubmit on the form correctly prevents default; button stays type="submit" */}
         <form className="prediction-form" onSubmit={handlePredict}>
           <div className="team-selectors">
             <TeamSelect
@@ -117,7 +141,10 @@ function TeamSelect({ label, value, teams, loading, onChange }) {
         ? <div className="select-placeholder">Loading teams&hellip;</div>
         : (
           <select value={value} onChange={e => onChange(e.target.value)} required>
-            {teams.map(t => <option key={t} value={t}>{t}</option>)}
+            {/* FIX: ensure every option has a stable, unique key */}
+            {teams.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
           </select>
         )
       }
@@ -136,7 +163,10 @@ function Results({ prediction, homeTeam, awayTeam }) {
     <div className="results-container">
       <div className="prediction-winner">
         Predicted Outcome:&nbsp;
-        <span className="winner-highlight" style={{ color: colorMap[prediction.prediction] }}>
+        <span
+          className="winner-highlight"
+          style={{ color: colorMap[prediction.prediction] ?? 'var(--text-main)' }}
+        >
           {prediction.prediction}
         </span>
       </div>
@@ -178,7 +208,10 @@ function EloChip({ label, elo, color }) {
 }
 
 function ProgressBar({ label, value, type }) {
-  const pct = (Math.min(Math.max(value, 0), 1) * 100).toFixed(1);
+  // FIX: guard against null/undefined value before calling toFixed
+  const safeValue = typeof value === 'number' && isFinite(value) ? value : 0;
+  const pct = (Math.min(Math.max(safeValue, 0), 1) * 100).toFixed(1);
+
   return (
     <div className={`bar-wrapper ${type}-bar`}>
       <div className="bar-labels">
