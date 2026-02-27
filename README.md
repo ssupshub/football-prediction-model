@@ -14,6 +14,31 @@ An ML-powered football match outcome predictor with a FastAPI backend and React 
 
 ---
 
+## Bug Fixes (v2.1)
+
+### `backend/main.py`
+- **[Critical]** `H2H_HomeWinRate` was hardcoded to `0.45` in `build_features()` — predictions now use real head-to-head history loaded from `current_state.pkl`
+- **[Critical]** Added `_get_classes()` helper for robust `classes_` extraction from `CalibratedClassifierCV` across all sklearn versions (handles both `.estimator` and `.base_estimator` attribute names)
+- **[Minor]** Narrowed `except` block in `/predict` endpoint so only `predict_proba` failures are caught, with a descriptive error message
+
+### `backend/model_training.py`
+- **[Critical]** Fixed calibration data leakage: calibrator now fits on a dedicated `X_cal`/`y_cal` split, not on the same `X_test`/`y_test` used to compute evaluation metrics
+- **[Critical]** H2H records are now tracked during feature engineering, persisted in `current_state.pkl`, and loaded at inference time
+- **[Minor]** Fixed return signature of `engineer_features()` to include `h2h_serializable`
+
+### `backend/data_generator.py`
+- **[Important]** Replaced global `np.random` calls with an isolated `np.random.RandomState` instance (`np_rng`) threaded through all simulation functions — removes side-effects on global random state and improves reproducibility
+- **[Minor]** Removed `random.seed()` / `np.random.seed()` global mutations from `generate_historical_data()`
+
+### `backend/run_all.bat`
+- **[Minor]** Added `if errorlevel 1` checks after every step so failures are reported and the script stops instead of silently continuing
+
+### `frontend/src/App.jsx`
+- **[Minor]** Error details are now captured and displayed in the teams-fetch `.catch()` handler (previously discarded)
+- **[Minor]** `ProgressBar` now guards against `null`/`undefined`/`NaN` probability values with an `isFinite()` check before calling `.toFixed()`
+
+---
+
 ## Project Structure
 
 ```
@@ -120,8 +145,6 @@ Copy `.env.example` to `.env` in the relevant folder and update values as needed
 |---|---|---|
 | `VITE_API_BASE_URL` | *(empty)* | Backend URL. Leave empty in dev (Vite proxy handles it). Set to your Render URL in production. |
 
-> **Important:** All Vite frontend variables must be prefixed with `VITE_` to be accessible in the browser.
-
 ---
 
 ## API Reference
@@ -163,70 +186,9 @@ Predicts match outcome probabilities and returns ELO ratings.
 }
 ```
 
-**Error responses:**
-
-| Status | Reason |
-|---|---|
-| `404` | Team name not found |
-| `422` | Home and Away teams are the same |
-| `503` | Model not loaded (run `model_training.py` first) |
-
----
-
-## Deployment
-
-### Backend → Render (Docker)
-
-1. Push repository to GitHub
-2. Go to [render.com](https://render.com) → **New Web Service**
-3. Connect your GitHub repo
-4. Set **Root Directory** to `backend`
-5. Set **Environment** to `Docker`
-6. Under **Environment Variables**, add:
-   - `ALLOWED_ORIGINS` = `https://your-app.vercel.app`
-7. Click **Deploy** (first build takes ~10 minutes — it generates data and trains the model)
-8. Copy your service URL: `https://your-backend.onrender.com`
-
-> **Note:** Render free-tier services sleep after 15 minutes of inactivity. The first request after sleep may take ~30 seconds.
-
-### Frontend → Vercel
-
-1. Go to [vercel.com](https://vercel.com) → **Add New Project**
-2. Import your GitHub repository
-3. Set **Root Directory** to `frontend`
-4. Framework will be auto-detected as **Vite**
-5. Under **Environment Variables**, add:
-   - `VITE_API_BASE_URL` = `https://your-backend.onrender.com`
-6. Click **Deploy** (~1 minute)
-
-**Fix page refresh 404 (optional):** Create `frontend/public/vercel.json`:
-```json
-{
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
-}
-```
-
 ---
 
 ## Model Details
-
-### Data Generation
-
-| Property | Value |
-|---|---|
-| Leagues | Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Eredivisie |
-| Seasons | 2018–19 through 2024–25 (7 seasons) |
-| Teams | 120 |
-| Matches | 15,960 |
-| Format | Double round-robin per league per season |
-
-Each match is simulated using:
-- Separate **attack / defence ratings** per team (not a combined score)
-- **xG (expected goals)** via Poisson sampling
-- **Home fortress** multiplier per team
-- **Form factor** from last 6 results (range 0.80–1.20)
-- **Season fatigue** — performance slightly declines late in season
-- **Head-to-head** history across all previous seasons
 
 ### Features (26 total)
 
@@ -251,18 +213,6 @@ Each match is simulated using:
 | Logistic Regression | StandardScaler pipeline, `C=0.5`, 5-fold CV |
 | Random Forest | 300 estimators, max depth 12 |
 | XGBoost | RandomizedSearchCV (20 iterations, 3-fold CV) |
-
-The best model by weighted F1 score is selected and wrapped in **isotonic probability calibration** (`CalibratedClassifierCV`) for reliable confidence scores.
-
-### Performance (v1 → v2)
-
-| Metric | v1 | v2 |
-|---|---|---|
-| Training matches | 2,000 | **15,960** |
-| Features | 8 | **26** |
-| F1 Score (weighted) | 0.39 | **0.49** (+26%) |
-
----
 
 ## Tech Stack
 
