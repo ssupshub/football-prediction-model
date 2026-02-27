@@ -1,5 +1,6 @@
 import os
 import pickle
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -17,6 +18,7 @@ state: dict[str, Any] = {
     "features":       None,
     "elos":           {},
     "stats":          {},
+    "h2h":            {},          # FIX: persist H2H data so build_features() can use real values
     "league_encoder": None,
 }
 
@@ -40,6 +42,8 @@ def load_artifacts() -> None:
         state["elos"]           = cs["elos"]
         state["stats"]          = cs["stats"]
         state["league_encoder"] = cs.get("league_encoder")
+        # FIX: load H2H data if saved by updated model_training.py
+        state["h2h"]            = cs.get("h2h", {})
         print(f"Loaded {state_path}  ({len(state['elos'])} teams)")
     except FileNotFoundError:
         print(f"State file '{state_path}' not found. Run model_training.py first.")
@@ -105,6 +109,19 @@ def _sum_pts(hist: list, n: int = 5) -> float:
     return float(sum(m["points"] for m in hist[-n:]))
 
 
+def _h2h_home_win_rate(home: str, away: str, n: int = 10) -> float:
+    """
+    FIX: Use persisted H2H data instead of hardcoded 0.45.
+    Falls back to 0.45 only when no history is available.
+    """
+    h2h = state.get("h2h", {})
+    key = tuple(sorted([home, away]))
+    records = h2h.get(key, [])[-n:]
+    if not records:
+        return 0.45
+    return sum(1 for winner in records if winner == home) / len(records)
+
+
 def build_features(home: str, away: str, league_enc: int = 0) -> pd.DataFrame:
     elos  = state["elos"]
     stats = state["stats"]
@@ -119,6 +136,9 @@ def build_features(home: str, away: str, league_enc: int = 0) -> pd.DataFrame:
 
     home_gd = sum(m["scored"] - m["conceded"] for m in home_hist[-10:])
     away_gd = sum(m["scored"] - m["conceded"] for m in away_hist[-10:])
+
+    # FIX: use real H2H win rate instead of hardcoded 0.45
+    h2h_rate = _h2h_home_win_rate(home, away)
 
     row = {
         "Home_ELO":          home_elo,
@@ -145,10 +165,33 @@ def build_features(home: str, away: str, league_enc: int = 0) -> pd.DataFrame:
         "Away_Avg_Corners":  _avg(away_hist, "corners"),
         "Home_Avg_Yellow":   _avg(home_hist, "yellow"),
         "Away_Avg_Yellow":   _avg(away_hist, "yellow"),
-        "H2H_HomeWinRate":   0.45,
+        "H2H_HomeWinRate":   h2h_rate,
         "League_Enc":        league_enc,
     }
     return pd.DataFrame([row])[state["features"]]
+
+
+# ---------------------------------------------------------------------------
+# Helper: robustly extract classes from a (possibly calibrated) model
+# ---------------------------------------------------------------------------
+
+def _get_classes(model) -> list:
+    """
+    FIX: Robustly extract class labels from model regardless of sklearn version.
+    CalibratedClassifierCV exposes classes_ directly in sklearn 1.2+.
+    """
+    # Primary: CalibratedClassifierCV and most estimators expose classes_ directly
+    if hasattr(model, "classes_"):
+        return list(model.classes_)
+    # Fallback for older sklearn: dig into calibrated sub-estimators
+    if hasattr(model, "calibrated_classifiers_") and model.calibrated_classifiers_:
+        sub = model.calibrated_classifiers_[0]
+        # sklearn 1.2+ uses .estimator, older used .base_estimator
+        inner = getattr(sub, "estimator", None) or getattr(sub, "base_estimator", None)
+        if inner is not None and hasattr(inner, "classes_"):
+            return list(inner.classes_)
+    # Last resort: assume standard label encoding A=0, D=1, H=2
+    return [0, 1, 2]
 
 
 # ---------------------------------------------------------------------------
@@ -187,30 +230,25 @@ def predict_match(request: MatchRequest):
     if away not in state["elos"]:
         raise HTTPException(status_code=404, detail=f"Team '{away}' not found.")
 
+    # FIX: Narrow exception handling so real errors are not silently swallowed
+    input_df = build_features(home, away)
+
     try:
-        input_df = build_features(home, away)
-        proba    = state["model"].predict_proba(input_df)[0]
-
-        # CalibratedClassifierCV stores classes on calibrated_classifiers_
-        mdl = state["model"]
-        if hasattr(mdl, "classes_"):
-            classes = list(mdl.classes_)
-        elif hasattr(mdl, "calibrated_classifiers_"):
-            classes = list(mdl.calibrated_classifiers_[0].estimator.classes_)
-        else:
-            classes = [0, 1, 2]
-
-        prob_map  = {int(c): float(p) for c, p in zip(classes, proba)}
-        label_map = {0: "Away Win", 1: "Draw", 2: "Home Win"}
-        best      = max(prob_map, key=prob_map.get)
-
-        return PredictionResponse(
-            home_win_probability = prob_map.get(2, 0.0),
-            draw_probability     = prob_map.get(1, 0.0),
-            away_win_probability = prob_map.get(0, 0.0),
-            prediction           = label_map.get(best, "Unknown"),
-            home_elo             = round(state["elos"][home], 1),
-            away_elo             = round(state["elos"][away], 1),
-        )
+        proba = state["model"].predict_proba(input_df)[0]
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail=f"Prediction error: {exc}") from exc
+
+    # FIX: use robust class extraction helper
+    classes   = _get_classes(state["model"])
+    prob_map  = {int(c): float(p) for c, p in zip(classes, proba)}
+    label_map = {0: "Away Win", 1: "Draw", 2: "Home Win"}
+    best      = max(prob_map, key=prob_map.get)
+
+    return PredictionResponse(
+        home_win_probability = prob_map.get(2, 0.0),
+        draw_probability     = prob_map.get(1, 0.0),
+        away_win_probability = prob_map.get(0, 0.0),
+        prediction           = label_map.get(best, "Unknown"),
+        home_elo             = round(state["elos"][home], 1),
+        away_elo             = round(state["elos"][away], 1),
+    )
