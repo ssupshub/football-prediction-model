@@ -14,6 +14,24 @@ An ML-powered football match outcome predictor with a FastAPI backend and React 
 
 ---
 
+## 🚀 Deployment
+
+> Full step-by-step instructions — including **what**, **why**, and **how** — are in **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
+
+| Layer | Platform | Guide Section |
+|---|---|---|
+| Backend (FastAPI + ML model) | [Render](https://render.com) — Docker | [Step 2 in DEPLOYMENT.md](./DEPLOYMENT.md#4-step-2--deploy-the-backend-on-render) |
+| Frontend (React + Vite) | [Vercel](https://vercel.com) | [Step 3 in DEPLOYMENT.md](./DEPLOYMENT.md#5-step-3--deploy-the-frontend-on-vercel) |
+
+**Quick summary:**
+1. Push this repo to GitHub
+2. Create a Render **Web Service** → Root Directory: `backend` → Environment: `Docker`
+3. Create a Vercel **Project** → Root Directory: `frontend` → add `VITE_API_BASE_URL` env var pointing to your Render URL
+4. Set `ALLOWED_ORIGINS` on Render to your Vercel URL
+5. Done ✅ — see [DEPLOYMENT.md](./DEPLOYMENT.md) for every detail, env var, and troubleshooting tip
+
+---
+
 ## Bug Fixes (v2.1)
 
 ### `backend/main.py`
@@ -43,6 +61,9 @@ An ML-powered football match outcome predictor with a FastAPI backend and React 
 
 ```
 football-predictor/
+├── DEPLOYMENT.md             # ← Full deployment guide (Render + Vercel)
+├── README.md
+├── .gitignore
 ├── backend/
 │   ├── data_generator.py     # Generates 15,960 synthetic matches across 6 leagues & 7 seasons
 │   ├── model_training.py     # Feature engineering + trains LR / RF / XGBoost, saves best model
@@ -50,21 +71,20 @@ football-predictor/
 │   ├── utils.py              # ELO rating calculation helper
 │   ├── requirements.txt      # Python dependencies
 │   ├── Dockerfile            # Container: generates data, trains model, starts server
+│   ├── .env.example          # Backend environment variable reference
 │   └── run_all.bat           # Windows one-click local setup
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx           # React UI: team selectors, ELO chips, probability bars
-│   │   ├── index.css         # Glassmorphism dark-theme styles
-│   │   └── main.jsx          # React entry point
-│   ├── public/
-│   │   └── vite.svg
-│   ├── index.html
-│   ├── vite.config.js        # Dev proxy: /api → localhost:8000
-│   ├── package.json
-│   ├── eslint.config.js
-│   └── .env.example          # Environment variable reference (copy → .env)
-├── .gitignore
-└── README.md
+└── frontend/
+    ├── src/
+    │   ├── App.jsx           # React UI: team selectors, ELO chips, probability bars
+    │   ├── index.css         # Glassmorphism dark-theme styles
+    │   └── main.jsx          # React entry point
+    ├── public/
+    │   └── vercel.json       # SPA rewrite rule — prevents 404 on page refresh
+    ├── index.html
+    ├── vite.config.js        # Dev proxy: /api → localhost:8000
+    ├── package.json
+    ├── eslint.config.js
+    └── .env.example          # Frontend environment variable reference
 ```
 
 ---
@@ -98,7 +118,7 @@ python model_training.py
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-API is now available at `http://localhost:8000`
+API is now available at `http://localhost:8000`  
 Interactive docs at `http://localhost:8000/docs`
 
 ### 2. Frontend
@@ -135,8 +155,8 @@ Copy `.env.example` to `.env` in the relevant folder and update values as needed
 | Variable | Default | Description |
 |---|---|---|
 | `MODEL_PATH` | `football_model.pkl` | Path to trained model file |
-| `STATE_PATH` | `current_state.pkl` | Path to ELO + stats state file |
-| `ALLOWED_ORIGINS` | `*` | CORS allowed origins (comma-separated in production) |
+| `STATE_PATH` | `current_state.pkl` | Path to ELO + stats + H2H state file |
+| `ALLOWED_ORIGINS` | `*` | CORS allowed origins — set to your Vercel URL in production |
 | `PORT` | `8000` | Server port |
 
 ### Frontend (`frontend/.env`)
@@ -144,6 +164,8 @@ Copy `.env.example` to `.env` in the relevant folder and update values as needed
 | Variable | Default | Description |
 |---|---|---|
 | `VITE_API_BASE_URL` | *(empty)* | Backend URL. Leave empty in dev (Vite proxy handles it). Set to your Render URL in production. |
+
+> **All Vite frontend variables must be prefixed with `VITE_`** to be accessible in the browser.
 
 ---
 
@@ -186,9 +208,35 @@ Predicts match outcome probabilities and returns ELO ratings.
 }
 ```
 
+**Error responses:**
+
+| Status | Reason |
+|---|---|
+| `404` | Team name not found |
+| `422` | Home and Away teams are the same |
+| `503` | Model not loaded (run `model_training.py` first) |
+
 ---
 
 ## Model Details
+
+### Data Generation
+
+| Property | Value |
+|---|---|
+| Leagues | Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Eredivisie |
+| Seasons | 2018–19 through 2024–25 (7 seasons) |
+| Teams | 120 |
+| Matches | 15,960 |
+| Format | Double round-robin per league per season |
+
+Each match is simulated using:
+- Separate **attack / defence ratings** per team
+- **xG (expected goals)** via Poisson sampling
+- **Home fortress** multiplier per team
+- **Form factor** from last 6 results (range 0.80–1.20)
+- **Season fatigue** — performance slightly declines late in season
+- **Head-to-head** history across all previous seasons
 
 ### Features (26 total)
 
@@ -213,6 +261,18 @@ Predicts match outcome probabilities and returns ELO ratings.
 | Logistic Regression | StandardScaler pipeline, `C=0.5`, 5-fold CV |
 | Random Forest | 300 estimators, max depth 12 |
 | XGBoost | RandomizedSearchCV (20 iterations, 3-fold CV) |
+
+The best model by weighted F1 score is selected and wrapped in **isotonic probability calibration** (`CalibratedClassifierCV`) fitted on a **dedicated calibration split** (separate from the evaluation test set) for reliable confidence scores.
+
+### Performance (v1 → v2)
+
+| Metric | v1 | v2 |
+|---|---|---|
+| Training matches | 2,000 | **15,960** |
+| Features | 8 | **26** |
+| F1 Score (weighted) | 0.39 | **0.49** (+26%) |
+
+---
 
 ## Tech Stack
 
