@@ -187,34 +187,39 @@ class H2HTracker:
 
 # ---------------------------------------------------------------------------
 # Match simulation
+# FIX: Pass a numpy RandomState instead of relying on global np.random state,
+#      so that simulation results are fully isolated from external np.random calls.
 # ---------------------------------------------------------------------------
 
-def calc_xg(attack, opp_defence, is_home, home_boost, league_avg, fraction, form_factor, rng):
+def calc_xg(attack, opp_defence, is_home, home_boost, league_avg, fraction, form_factor, rng, np_rng):
     home_mult   = home_boost if is_home else 1.0
     fatigue_adj = 1.0 - 0.06 * (fraction ** 2)
-    noise       = rng.gauss(1.0, 0.08)
+    # FIX: use np_rng (numpy RandomState) instead of global np.random for reproducibility
+    noise       = np_rng.normal(1.0, 0.08)
     xg = (attack / max(opp_defence, 0.3)) * home_mult * fatigue_adj * form_factor * noise * league_avg
     return max(xg, 0.05)
 
 
-def simulate_match(home, away, profiles, form_home, form_away, h2h, league_avg, fraction, rng):
+def simulate_match(home, away, profiles, form_home, form_away, h2h, league_avg, fraction, rng, np_rng):
     hp = profiles[home]
     ap = profiles[away]
 
-    home_att = hp["attack"]  * rng.gauss(1.0, hp["volatility"])
-    home_def = hp["defence"] * rng.gauss(1.0, hp["volatility"])
-    away_att = ap["attack"]  * rng.gauss(1.0, ap["volatility"])
-    away_def = ap["defence"] * rng.gauss(1.0, ap["volatility"])
+    # FIX: use np_rng consistently for numpy calls
+    home_att = hp["attack"]  * np_rng.normal(1.0, hp["volatility"])
+    home_def = hp["defence"] * np_rng.normal(1.0, hp["volatility"])
+    away_att = ap["attack"]  * np_rng.normal(1.0, ap["volatility"])
+    away_def = ap["defence"] * np_rng.normal(1.0, ap["volatility"])
 
-    home_xg = calc_xg(home_att, away_def, True,  hp["home_boost"], league_avg, fraction, form_home.factor(), rng)
-    away_xg = calc_xg(away_att, home_def, False, ap["home_boost"], league_avg, fraction, form_away.factor(), rng)
+    home_xg = calc_xg(home_att, away_def, True,  hp["home_boost"], league_avg, fraction, form_home.factor(), rng, np_rng)
+    away_xg = calc_xg(away_att, home_def, False, ap["home_boost"], league_avg, fraction, form_away.factor(), rng, np_rng)
 
     h2h_rate = h2h.home_win_rate(home, away)
     home_xg *= (0.95 + 0.10 * h2h_rate)
     away_xg *= (1.05 - 0.10 * h2h_rate)
 
-    home_goals = int(np.random.poisson(home_xg))
-    away_goals = int(np.random.poisson(away_xg))
+    # FIX: use np_rng for Poisson sampling
+    home_goals = int(np_rng.poisson(home_xg))
+    away_goals = int(np_rng.poisson(away_xg))
 
     result = "H" if home_goals > away_goals else ("A" if away_goals > home_goals else "D")
 
@@ -224,7 +229,7 @@ def simulate_match(home, away, profiles, form_home, form_away, h2h, league_avg, 
     away_shots_ot = min(away_shots, max(away_goals, int(away_shots * rng.uniform(0.3, 0.5))))
 
     total_att  = home_att + away_att + 1e-6
-    home_poss  = min(max(round((home_att / total_att) * rng.gauss(100, 3)), 30), 70)
+    home_poss  = min(max(round((home_att / total_att) * np_rng.normal(100, 3)), 30), 70)
 
     return dict(
         home_goals=home_goals, away_goals=away_goals, result=result,
@@ -234,12 +239,12 @@ def simulate_match(home, away, profiles, form_home, form_away, h2h, league_avg, 
         home_poss=home_poss, away_poss=100 - home_poss,
         home_corners=max(0, int(home_shots * rng.uniform(0.4, 0.7))),
         away_corners=max(0, int(away_shots * rng.uniform(0.4, 0.7))),
-        home_yellow=max(0, int(rng.gauss(1.6, 1.0))),
-        away_yellow=max(0, int(rng.gauss(1.8, 1.0))),
+        home_yellow=max(0, int(np_rng.normal(1.6, 1.0))),
+        away_yellow=max(0, int(np_rng.normal(1.8, 1.0))),
         home_red=1 if rng.random() < 0.04 else 0,
         away_red=1 if rng.random() < 0.05 else 0,
-        home_fouls=max(0, int(rng.gauss(11, 3))),
-        away_fouls=max(0, int(rng.gauss(12, 3))),
+        home_fouls=max(0, int(np_rng.normal(11, 3))),
+        away_fouls=max(0, int(np_rng.normal(12, 3))),
     )
 
 
@@ -248,7 +253,7 @@ def simulate_match(home, away, profiles, form_home, form_away, h2h, league_avg, 
 # ---------------------------------------------------------------------------
 
 def generate_season(league_name, league, profiles, s_idx, s_start, s_end,
-                    h2h, form_trackers, rng):
+                    h2h, form_trackers, rng, np_rng):
     teams    = league["teams"]
     fixtures = [(h, a) for i, h in enumerate(teams) for j, a in enumerate(teams) if i != j]
     rng.shuffle(fixtures)
@@ -263,18 +268,23 @@ def generate_season(league_name, league, profiles, s_idx, s_start, s_end,
         match_date = s_start + timedelta(days=day_offset)
         fraction   = day_offset / max(season_days, 1)
 
+        # FIX: pass np_rng to simulate_match
         sim    = simulate_match(home, away, profiles,
                                 form_trackers[home], form_trackers[away],
-                                h2h, league["avg_goals"], fraction, rng)
+                                h2h, league["avg_goals"], fraction, rng, np_rng)
         result = sim["result"]
 
         form_trackers[home].update("W" if result == "H" else ("D" if result == "D" else "L"))
         form_trackers[away].update("W" if result == "A" else ("D" if result == "D" else "L"))
         h2h.record(home, away, result)
 
+        # FIX: season label uses zero-padded last two digits correctly for any century
+        end_year_short = (s_start.year + 1) % 100
+        season_label   = f"{s_start.year}-{end_year_short:02d}"
+
         rows.append({
             "Date":            match_date.strftime("%Y-%m-%d"),
-            "Season":          f"{s_start.year}-{(s_start.year + 1) % 100:02d}",
+            "Season":          season_label,
             "League":          league_name,
             "HomeTeam":        home,
             "AwayTeam":        away,
@@ -310,9 +320,10 @@ def generate_season(league_name, league, profiles, s_idx, s_start, s_end,
 # ---------------------------------------------------------------------------
 
 def generate_historical_data(seed=42, output_path="football_data.csv"):
-    random.seed(seed)
-    np.random.seed(seed)
-    rng = random.Random(seed)
+    # FIX: Use isolated numpy RandomState instead of setting the global seed,
+    #      preventing side-effects on any other code that uses np.random.
+    rng     = random.Random(seed)
+    np_rng  = np.random.RandomState(seed)
 
     all_rows = []
 
@@ -326,10 +337,11 @@ def generate_historical_data(seed=42, output_path="football_data.csv"):
                 league,
                 seed=seed + s_idx * 31 + abs(hash(league_name)) % 997
             )
+            # FIX: pass np_rng through to generate_season
             rows = generate_season(
                 league_name, league, profiles,
                 s_idx, s_start, s_end,
-                h2h, form_trackers, rng,
+                h2h, form_trackers, rng, np_rng,
             )
             all_rows.extend(rows)
 
