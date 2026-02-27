@@ -17,6 +17,7 @@ Best model is probability-calibrated with isotonic regression.
 
 import pickle
 import warnings
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -80,6 +81,8 @@ def engineer_features(df: pd.DataFrame):
 
     elo_ratings: dict = {}
     team_history: dict = {}
+    # FIX: persist H2H tracker so it can be saved and used at inference time
+    h2h_records: dict = {}   # key: frozenset({home, away}) -> list of winners
 
     for col in FEATURES:
         df[col] = 0.0
@@ -136,7 +139,16 @@ def engineer_features(df: pd.DataFrame):
         df.at[idx, "Home_Avg_Yellow"]   = rolling(home, "yellow")
         df.at[idx, "Away_Avg_Yellow"]   = rolling(away, "yellow")
 
-        df.at[idx, "H2H_HomeWinRate"]   = float(row.get("H2H_HomeWinRate", 0.45))
+        # FIX: Use computed H2H from the h2h_records tracker (pre-match state)
+        h2h_key = tuple(sorted([home, away]))
+        h2h_hist = h2h_records.get(h2h_key, [])[-10:]
+        if h2h_hist:
+            h2h_rate = sum(1 for w in h2h_hist if w == home) / len(h2h_hist)
+        else:
+            # Fall back to CSV value if available, else neutral
+            h2h_rate = float(row.get("H2H_HomeWinRate", 0.45))
+        df.at[idx, "H2H_HomeWinRate"]   = h2h_rate
+
         df.at[idx, "League_Enc"]        = int(row["League_Enc"])
 
         # --- post-match update ---
@@ -174,8 +186,17 @@ def engineer_features(df: pd.DataFrame):
             "yellow": int(row.get("AY", 0)),
         })
 
+        # FIX: Update H2H tracker after the match (post-match, won't affect current row)
+        winner = home if ftr == "H" else (away if ftr == "A" else "D")
+        if h2h_key not in h2h_records:
+            h2h_records[h2h_key] = []
+        h2h_records[h2h_key].append(winner)
+
     df["Target"] = df["FTR"].map({"A": 0, "D": 1, "H": 2})
-    return df, elo_ratings, team_history, le
+
+    # FIX: convert frozenset keys to tuple for pickle serialisation
+    h2h_serializable = {k: v for k, v in h2h_records.items()}
+    return df, elo_ratings, team_history, le, h2h_serializable
 
 
 # ---------------------------------------------------------------------------
@@ -188,13 +209,16 @@ def train_models():
     print(f"  {len(df):,} matches across {df['League'].nunique()} leagues")
 
     print("Engineering features ...")
-    df, final_elos, final_stats, league_encoder = engineer_features(df)
+    # FIX: unpack h2h_records from engineer_features
+    df, final_elos, final_stats, league_encoder, final_h2h = engineer_features(df)
 
     with open("current_state.pkl", "wb") as f:
         pickle.dump({
             "elos":           final_elos,
             "stats":          final_stats,
             "league_encoder": league_encoder,
+            # FIX: persist H2H records so inference can use real H2H win rates
+            "h2h":            final_h2h,
         }, f)
     print("Saved current_state.pkl")
 
@@ -203,8 +227,13 @@ def train_models():
     y = df.loc[valid, "Target"].copy()
     print(f"Training samples: {len(X):,}  (dropped {(~valid).sum()} cold-start rows)")
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+    # FIX: Use a calibration split separate from the test split to prevent
+    # data leakage (previously calibration used the same X_test/y_test as evaluation)
+    X_train_full, X_test, y_train_full, y_test = train_test_split(
+        X, y, test_size=0.15, random_state=42, stratify=y
+    )
+    X_train, X_cal, y_train, y_cal = train_test_split(
+        X_train_full, y_train_full, test_size=0.15, random_state=42, stratify=y_train_full
     )
 
     xgb_param_dist = {
@@ -240,15 +269,22 @@ def train_models():
     print("\n--- Model Evaluation ---")
     for name, model in candidates.items():
         print(f"\n{name}:")
+
+        # FIX: For non-search models run CV on train set only (not full X_train_full)
         if not isinstance(model, RandomizedSearchCV):
             cv = cross_val_score(model, X_train, y_train, cv=5, scoring="accuracy", n_jobs=-1)
             print(f"  CV Accuracy : {cv.mean():.4f} +/- {cv.std()*2:.4f}")
 
         model.fit(X_train, y_train)
-        fitted = model.best_estimator_ if isinstance(model, RandomizedSearchCV) else model
-        if isinstance(model, RandomizedSearchCV):
-            print(f"  Best params : {model.best_params_}")
 
+        # FIX: Correctly extract the underlying fitted estimator from RandomizedSearchCV
+        if isinstance(model, RandomizedSearchCV):
+            fitted = model.best_estimator_
+            print(f"  Best params : {model.best_params_}")
+        else:
+            fitted = model
+
+        # Evaluate on held-out TEST set (not contaminated by calibration)
         y_pred  = fitted.predict(X_test)
         y_proba = fitted.predict_proba(X_test)
         acc = accuracy_score(y_test, y_pred)
@@ -261,12 +297,15 @@ def train_models():
         if f1 > best_f1:
             best_f1   = f1
             best_name = name
-            cal       = CalibratedClassifierCV(fitted, cv="prefit", method="isotonic")
-            cal.fit(X_test, y_test)
+            # FIX: Calibrate on X_cal/y_cal (separate from X_test used for evaluation)
+            # This prevents the previous data leakage where the same samples were used
+            # for both computing the reported metrics AND fitting the calibrator.
+            cal = CalibratedClassifierCV(fitted, cv="prefit", method="isotonic")
+            cal.fit(X_cal, y_cal)
             best_model = cal
 
     print(f"\n✔ Best model: {best_name} (F1={best_f1:.4f})")
-    print("  Probabilities calibrated with isotonic regression")
+    print("  Probabilities calibrated with isotonic regression (on separate calibration split)")
 
     with open("football_model.pkl", "wb") as f:
         pickle.dump({"model": best_model, "features": FEATURES}, f)
