@@ -1,4 +1,4 @@
-# 🚀 Deployment Guide — AI Football Match Predictor
+#  Deployment Guide — AI Football Match Predictor
 
 > **Backend → Render** | **Frontend → Vercel**
 
@@ -6,7 +6,7 @@ This guide walks you through deploying the full-stack Football Match Predictor f
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 1. [Overview & Architecture](#1-overview--architecture)
 2. [Prerequisites](#2-prerequisites)
@@ -208,7 +208,7 @@ And the teams list:
 https://football-predictor-api.onrender.com/teams
 ```
 
-> 📝 **Copy your Render URL** — you will need it in Step 4.
+>  **Copy your Render URL** — you will need it in Step 4.
 
 ---
 
@@ -550,4 +550,3 @@ FRONTEND (Vercel)
 
 ---
 
-*Guide version: 2.1 — covers football-predictor-fixed.zip with all bug fixes applied*
