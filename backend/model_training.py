@@ -12,7 +12,6 @@ Models evaluated:
   - Random Forest (300 estimators)
   - XGBoost (RandomizedSearchCV tuned)
 
-Best model is probability-calibrated with isotonic regression.
 """
 
 import pickle
