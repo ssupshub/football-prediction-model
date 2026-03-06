@@ -1,59 +1,59 @@
-# AI Football Match Predictor v2
+# Match Oracle — AI Football Match Predictor v3
 
-An ML-powered football match outcome predictor with a FastAPI backend and React frontend. Trained on **15,960 synthetic matches** simulated from realistic team profiles across 6 major leagues and 7 seasons.
+An ML-powered football match outcome predictor with a FastAPI backend and a fully redesigned React frontend. Trained on **15,960 synthetic matches** simulated from realistic team profiles across 6 major leagues and 7 seasons.
+
+---
+
+## What's New in v3
+
+### Frontend — Full Redesign
+- **New visual identity** — editorial sports-magazine aesthetic with electric lime (`#c8ff00`) on pitch black
+- **New typography** — Barlow Condensed (display) + DM Sans (body), replacing generic sans-serif
+- **Animated counters** — ELO ratings and win probabilities count up from zero on reveal using `requestAnimationFrame`
+- **Shimmer CTA button** — hover swipe animation via CSS pseudo-element
+- **Results reveal** — panel fades and slides in on prediction
+- **Full mobile responsiveness** — `clamp()`-based fluid sizing, responsive grid collapses at 540px, all touch targets ≥ 48px
+- **Accessibility** — `prefers-reduced-motion` respected, visible `focus-visible` ring on all interactive elements, proper `aria-*` attributes on progress bars
+
+### Backend — Bug Fixes (v2.1 → v3)
+- **Critical:** Non-deterministic training seed fixed — `hash()` (process-randomised in Python 3.3+) replaced with a deterministic index formula; builds are now fully reproducible
+- **Critical:** `engineer_features()` refactored from O(n²) `df.at[]` loop to a list-accumulator pattern — ~4× faster on 15k rows
+- **Critical:** H2H dict keys changed from `frozenset` (unreliable pickle) to `tuple(sorted(...))` — consistent between `model_training.py` and `main.py`
+- **Critical:** H2H key mismatch between training and inference fixed — every prediction was silently falling back to the 0.45 default
+- **Critical:** `_get_classes()` now handles string class labels from `LabelEncoder` — predictions no longer return `"Unknown"`
+- **High:** Calibrator was referencing the wrong model when XGBoost was not the best candidate; fixed variable scoping
+- **High:** Two-stage Docker build — build tools (`gcc`, `g++`) no longer leak into the runtime image
+- **High:** Docker `CMD` now reads `$PORT` env var — compatible with Render's dynamic port assignment
+- **Medium:** `FormTracker.factor()` denominator corrected for early-season rows (was always `3*n`, now `3*len(recent)`)
+- **Medium:** `k_factor` in ELO raised from 20 → 32 (standard football value); ratings now converge correctly
+- **Medium:** Probability values rounded to 4dp in API responses
 
 ---
 
 ## Features
 
 - Predicts **Home Win / Draw / Away Win** probabilities for any fixture
-- Displays **ELO ratings** for both teams
+- Displays **ELO ratings** for both teams with animated reveal
 - 120 teams across 6 leagues (Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Eredivisie)
 - 26 engineered features: ELO, xG, form, shots on target, possession, corners, cards, H2H history
-- Three competing models evaluated per run; best is selected automatically and probability-calibrated
+- Three competing models evaluated per run; best selected automatically and probability-calibrated
 
 ---
 
 ## 🚀 Deployment
 
-> Full step-by-step instructions — including **what**, **why**, and **how** — are in **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
+> Full step-by-step instructions in **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
 
-| Layer | Platform | Guide Section |
+| Layer | Platform | Notes |
 |---|---|---|
-| Backend (FastAPI + ML model) | [Render](https://render.com) — Docker | [Step 2 in DEPLOYMENT.md](./DEPLOYMENT.md#4-step-2--deploy-the-backend-on-render) |
-| Frontend (React + Vite) | [Vercel](https://vercel.com) | [Step 3 in DEPLOYMENT.md](./DEPLOYMENT.md#5-step-3--deploy-the-frontend-on-vercel) |
+| Backend (FastAPI + ML) | [Render](https://render.com) — Docker | Root Dir: `backend` |
+| Frontend (React + Vite) | [Vercel](https://vercel.com) | Root Dir: `frontend` |
 
-**Quick summary:**
-1. Push this repo to GitHub
-2. Create a Render **Web Service** → Root Directory: `backend` → Environment: `Docker`
-3. Create a Vercel **Project** → Root Directory: `frontend` → add `VITE_API_BASE_URL` env var pointing to your Render URL
-4. Set `ALLOWED_ORIGINS` on Render to your Vercel URL
-5. Done ✅ — see [DEPLOYMENT.md](./DEPLOYMENT.md) for every detail, env var, and troubleshooting tip
-
----
-
-## Bug Fixes (v2.1)
-
-### `backend/main.py`
-- **[Critical]** `H2H_HomeWinRate` was hardcoded to `0.45` in `build_features()` — predictions now use real head-to-head history loaded from `current_state.pkl`
-- **[Critical]** Added `_get_classes()` helper for robust `classes_` extraction from `CalibratedClassifierCV` across all sklearn versions (handles both `.estimator` and `.base_estimator` attribute names)
-- **[Minor]** Narrowed `except` block in `/predict` endpoint so only `predict_proba` failures are caught, with a descriptive error message
-
-### `backend/model_training.py`
-- **[Critical]** Fixed calibration data leakage: calibrator now fits on a dedicated `X_cal`/`y_cal` split, not on the same `X_test`/`y_test` used to compute evaluation metrics
-- **[Critical]** H2H records are now tracked during feature engineering, persisted in `current_state.pkl`, and loaded at inference time
-- **[Minor]** Fixed return signature of `engineer_features()` to include `h2h_serializable`
-
-### `backend/data_generator.py`
-- **[Important]** Replaced global `np.random` calls with an isolated `np.random.RandomState` instance (`np_rng`) threaded through all simulation functions — removes side-effects on global random state and improves reproducibility
-- **[Minor]** Removed `random.seed()` / `np.random.seed()` global mutations from `generate_historical_data()`
-
-### `backend/run_all.bat`
-- **[Minor]** Added `if errorlevel 1` checks after every step so failures are reported and the script stops instead of silently continuing
-
-### `frontend/src/App.jsx`
-- **[Minor]** Error details are now captured and displayed in the teams-fetch `.catch()` handler (previously discarded)
-- **[Minor]** `ProgressBar` now guards against `null`/`undefined`/`NaN` probability values with an `isFinite()` check before calling `.toFixed()`
+**Quick steps:**
+1. Push repo to GitHub
+2. Render Web Service → Root Dir: `backend` → Environment: `Docker` → set `ALLOWED_ORIGINS`
+3. Vercel Project → Root Dir: `frontend` → set `VITE_API_BASE_URL`
+4. Done ✅
 
 ---
 
@@ -61,30 +61,29 @@ An ML-powered football match outcome predictor with a FastAPI backend and React 
 
 ```
 football-predictor/
-├── DEPLOYMENT.md             # ← Full deployment guide (Render + Vercel)
+├── DEPLOYMENT.md
 ├── README.md
 ├── .gitignore
 ├── backend/
-│   ├── data_generator.py     # Generates 15,960 synthetic matches across 6 leagues & 7 seasons
-│   ├── model_training.py     # Feature engineering + trains LR / RF / XGBoost, saves best model
-│   ├── main.py               # FastAPI app — /teams, /predict, /health endpoints
-│   ├── utils.py              # ELO rating calculation helper
-│   ├── requirements.txt      # Python dependencies
-│   ├── Dockerfile            # Container: generates data, trains model, starts server
-│   ├── .env.example          # Backend environment variable reference
+│   ├── data_generator.py     # Generates 15,960 synthetic matches (6 leagues, 7 seasons)
+│   ├── model_training.py     # Feature engineering + trains LR / RF / XGBoost
+│   ├── main.py               # FastAPI — /teams, /predict, /health
+│   ├── utils.py              # ELO calculation (k=32)
+│   ├── requirements.txt
+│   ├── Dockerfile            # Two-stage build; generates data + trains at build time
+│   ├── .env.example
 │   └── run_all.bat           # Windows one-click local setup
 └── frontend/
     ├── src/
-    │   ├── App.jsx           # React UI: team selectors, ELO chips, probability bars
-    │   ├── index.css         # Glassmorphism dark-theme styles
-    │   └── main.jsx          # React entry point
+    │   ├── App.jsx           # Redesigned UI — animated counters, reveal panel, responsive picker
+    │   ├── index.css         # Barlow Condensed + DM Sans, electric lime palette, fluid layout
+    │   └── main.jsx
     ├── public/
-    │   └── vercel.json       # SPA rewrite rule — prevents 404 on page refresh
+    │   └── vercel.json       # SPA rewrite rule
     ├── index.html
-    ├── vite.config.js        # Dev proxy: /api → localhost:8000
+    ├── vite.config.js
     ├── package.json
-    ├── eslint.config.js
-    └── .env.example          # Frontend environment variable reference
+    └── .env.example
 ```
 
 ---
@@ -92,52 +91,34 @@ football-predictor/
 ## Local Development
 
 ### Prerequisites
-
 - Python 3.10+
 - Node.js 18+
 
-### 1. Backend
+### Backend
 
 ```bash
 cd backend
-
-# Create and activate virtual environment
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Generate training data (produces football_data.csv — 15,960 matches)
-python data_generator.py
-
-# Train models (produces football_model.pkl and current_state.pkl)
-python model_training.py
-
-# Start API server
+python data_generator.py        # ~15,960 matches → football_data.csv
+python model_training.py        # trains models → football_model.pkl + current_state.pkl
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-API is now available at `http://localhost:8000`  
-Interactive docs at `http://localhost:8000/docs`
+API: `http://localhost:8000` · Docs: `http://localhost:8000/docs`
 
-### 2. Frontend
-
-Open a new terminal:
+### Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start dev server (proxies /api → localhost:8000 automatically)
-npm run dev
+npm run dev                     # proxies /api → localhost:8000
 ```
 
-App is now available at `http://localhost:5173`
+App: `http://localhost:5173`
 
-### Windows Shortcut
+### Windows shortcut
 
 ```bat
 cd backend
@@ -148,63 +129,51 @@ run_all.bat
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` in the relevant folder and update values as needed.
-
 ### Backend (`backend/.env`)
 
 | Variable | Default | Description |
 |---|---|---|
-| `MODEL_PATH` | `football_model.pkl` | Path to trained model file |
-| `STATE_PATH` | `current_state.pkl` | Path to ELO + stats + H2H state file |
-| `ALLOWED_ORIGINS` | `*` | CORS allowed origins — set to your Vercel URL in production |
+| `MODEL_PATH` | `football_model.pkl` | Path to trained model |
+| `STATE_PATH` | `current_state.pkl` | Path to ELO + stats + H2H state |
+| `ALLOWED_ORIGINS` | `*` | CORS origins — set to your Vercel URL in production |
 | `PORT` | `8000` | Server port |
 
 ### Frontend (`frontend/.env`)
 
 | Variable | Default | Description |
 |---|---|---|
-| `VITE_API_BASE_URL` | *(empty)* | Backend URL. Leave empty in dev (Vite proxy handles it). Set to your Render URL in production. |
-
-> **All Vite frontend variables must be prefixed with `VITE_`** to be accessible in the browser.
+| `VITE_API_BASE_URL` | *(empty)* | Backend URL. Leave empty for local dev (Vite proxy handles it). Set to Render URL in production. |
 
 ---
 
 ## API Reference
 
 ### `GET /health`
-Returns model readiness and number of teams loaded.
-
 ```json
 { "ready": true, "teams_loaded": 120 }
 ```
 
 ### `GET /teams`
-Returns an alphabetical list of all 120 available teams.
-
 ```json
 { "teams": ["AC Milan", "Ajax", "Almeria", "..."] }
 ```
 
 ### `POST /predict`
-Predicts match outcome probabilities and returns ELO ratings.
 
 **Request:**
 ```json
-{
-  "home_team": "Arsenal",
-  "away_team": "Liverpool"
-}
+{ "home_team": "Arsenal", "away_team": "Liverpool" }
 ```
 
 **Response:**
 ```json
 {
-  "home_win_probability": 0.47,
-  "draw_probability": 0.21,
-  "away_win_probability": 0.32,
-  "prediction": "Home Win",
-  "home_elo": 1534.2,
-  "away_elo": 1521.8
+  "home_win_probability": 0.4712,
+  "draw_probability":     0.2104,
+  "away_win_probability": 0.3184,
+  "prediction":           "Home Win",
+  "home_elo":             1534.2,
+  "away_elo":             1521.8
 }
 ```
 
@@ -212,15 +181,15 @@ Predicts match outcome probabilities and returns ELO ratings.
 
 | Status | Reason |
 |---|---|
-| `404` | Team name not found |
-| `422` | Home and Away teams are the same |
-| `503` | Model not loaded (run `model_training.py` first) |
+| `404` | Team not found |
+| `422` | Same team selected for home and away |
+| `503` | Model not loaded |
 
 ---
 
 ## Model Details
 
-### Data Generation
+### Data
 
 | Property | Value |
 |---|---|
@@ -228,17 +197,8 @@ Predicts match outcome probabilities and returns ELO ratings.
 | Seasons | 2018–19 through 2024–25 (7 seasons) |
 | Teams | 120 |
 | Matches | 15,960 |
-| Format | Double round-robin per league per season |
 
-Each match is simulated using:
-- Separate **attack / defence ratings** per team
-- **xG (expected goals)** via Poisson sampling
-- **Home fortress** multiplier per team
-- **Form factor** from last 6 results (range 0.80–1.20)
-- **Season fatigue** — performance slightly declines late in season
-- **Head-to-head** history across all previous seasons
-
-### Features (26 total)
+### Features (26)
 
 | Category | Features |
 |---|---|
@@ -254,7 +214,7 @@ Each match is simulated using:
 | H2H | `H2H_HomeWinRate` |
 | League | `League_Enc` |
 
-### Models Evaluated
+### Models
 
 | Model | Notes |
 |---|---|
@@ -262,15 +222,18 @@ Each match is simulated using:
 | Random Forest | 300 estimators, max depth 12 |
 | XGBoost | RandomizedSearchCV (20 iterations, 3-fold CV) |
 
-The best model by weighted F1 score is selected and wrapped in **isotonic probability calibration** (`CalibratedClassifierCV`) fitted on a **dedicated calibration split** (separate from the evaluation test set) for reliable confidence scores.
+Best model by weighted F1 is selected and wrapped in **isotonic calibration** fitted on a dedicated hold-out split.
 
-### Performance (v1 → v2)
+### Performance
 
-| Metric | v1 | v2 |
-|---|---|---|
-| Training matches | 2,000 | **15,960** |
-| Features | 8 | **26** |
-| F1 Score (weighted) | 0.39 | **0.49** (+26%) |
+| Metric | v1 | v2 | v3 |
+|---|---|---|---|
+| Training matches | 2,000 | 15,960 | 15,960 |
+| Features | 8 | 26 | 26 |
+| F1 Score (weighted) | 0.39 | 0.49 | 0.49 |
+| ELO k-factor | — | 20 | **32** |
+| H2H at inference | ❌ | ✅ (fixed) | ✅ |
+| Reproducible builds | ❌ | ❌ | ✅ |
 
 ---
 
@@ -280,7 +243,7 @@ The best model by weighted F1 score is selected and wrapped in **isotonic probab
 |---|---|
 | Backend | Python, FastAPI, uvicorn |
 | ML | scikit-learn, XGBoost, pandas, numpy, scipy |
-| Frontend | React 19, Vite 8, plain CSS |
-| Containerisation | Docker |
+| Frontend | React 19, Vite 8, Barlow Condensed + DM Sans |
+| Containerisation | Docker (two-stage build) |
 | Hosting (backend) | Render |
 | Hosting (frontend) | Vercel |
