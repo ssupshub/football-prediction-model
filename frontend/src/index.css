@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap");
 
+/* ── Design tokens ────────────────────────────────────────────────────────── */
 :root {
   --primary:    #00ff88;
   --secondary:  #00b8ff;
@@ -11,8 +12,12 @@
   --home-color: #ff4081;
   --away-color: #00b8ff;
   --draw-color: #a0aec0;
+
+  /* FIX: expose focus ring colour as a token so it's easy to customise */
+  --focus-ring: rgba(0, 255, 136, 0.7);
 }
 
+/* ── Reset ───────────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -20,6 +25,14 @@
   padding: 0;
   box-sizing: border-box;
   font-family: "Outfit", sans-serif;
+}
+
+/* FIX: respect user motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body {
@@ -40,8 +53,7 @@ body {
   padding: 2rem;
 }
 
-/* ── Layout ─────────────────────────────────────────────────────────────── */
-
+/* ── Layout ──────────────────────────────────────────────────────────────── */
 .app-container {
   display: flex;
   flex-direction: column;
@@ -50,7 +62,7 @@ body {
 }
 
 .title {
-  font-size: 3rem;
+  font-size: clamp(2rem, 5vw, 3rem);   /* FIX: fluid type instead of hard 3rem */
   font-weight: 700;
   text-align: center;
   background: linear-gradient(90deg, var(--primary), var(--secondary));
@@ -68,7 +80,6 @@ body {
 }
 
 /* ── Glass card ──────────────────────────────────────────────────────────── */
-
 .glass-card {
   background: var(--card-bg);
   backdrop-filter: blur(16px);
@@ -88,7 +99,6 @@ body {
 }
 
 /* ── Form ────────────────────────────────────────────────────────────────── */
-
 .prediction-form {
   display: flex;
   flex-direction: column;
@@ -100,12 +110,6 @@ body {
   gap: 2rem;
   align-items: flex-end;
   justify-content: space-between;
-}
-
-@media (max-width: 600px) {
-  .team-selectors { flex-direction: column; }
-  .vs-badge       { padding-bottom: 0 !important; }
-  .title          { font-size: 2rem; }
 }
 
 .input-group {
@@ -143,9 +147,12 @@ select {
   background-size: 0.65rem auto;
 }
 
-select:focus {
+/* FIX: visible focus ring for keyboard navigation */
+select:focus,
+button:focus-visible {
   border-color: var(--primary);
-  box-shadow: 0 0 15px var(--glow);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: none;
 }
 
 select option {
@@ -170,7 +177,6 @@ select option {
 }
 
 /* ── Submit button ───────────────────────────────────────────────────────── */
-
 .submit-btn {
   background: linear-gradient(90deg, var(--primary), var(--secondary));
   color: var(--bg-dark);
@@ -196,7 +202,9 @@ select option {
   transform: none;
 }
 
-.submit-btn.loading { color: transparent; }
+.submit-btn.loading {
+  color: transparent;
+}
 
 .submit-btn.loading::after {
   content: "";
@@ -213,10 +221,11 @@ select option {
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 /* ── Results ─────────────────────────────────────────────────────────────── */
-
 .results-container {
   margin-top: 2rem;
   padding-top: 2rem;
@@ -273,6 +282,9 @@ select option {
   max-width: 130px;
   text-align: center;
   line-height: 1.2;
+  /* FIX: long team names now wrap instead of overflowing */
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .elo-value {
@@ -313,6 +325,8 @@ select option {
   height: 100%;
   border-radius: 6px;
   transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  /* FIX: min-width so a 0% bar still renders a visible sliver */
+  min-width: 2px;
 }
 
 .home-bar .progress-fill {
@@ -331,7 +345,6 @@ select option {
 }
 
 /* ── Error ───────────────────────────────────────────────────────────────── */
-
 .error-message {
   color: #ff4d4d;
   background: rgba(255, 77, 77, 0.1);
@@ -339,4 +352,35 @@ select option {
   border-radius: 8px;
   text-align: center;
   border: 1px solid rgba(255, 77, 77, 0.3);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .glass-card {
+    padding: 1.5rem;
+  }
+
+  .team-selectors {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vs-badge {
+    align-self: center;
+    padding: 0.5rem 0;
+  }
+
+  .elo-row {
+    flex-direction: column;
+    gap: 0.8rem;
+    text-align: center;
+  }
+
+  .elo-sep {
+    display: none;   /* FIX: hidden on mobile where layout is vertical */
+  }
+
+  .prediction-winner {
+    font-size: 1.4rem;
+  }
 }
