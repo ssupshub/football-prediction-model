@@ -1,15 +1,41 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import "./index.css";
 
-// FIX: strip trailing slash defensively so URL joins never produce double-slashes
 const API_BASE = import.meta.env.VITE_API_BASE_URL
   ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "")
   : "/api";
 
 // ---------------------------------------------------------------------------
+// Animated number counter
+// ---------------------------------------------------------------------------
+function AnimatedNumber({ value, decimals = 1, suffix = "" }) {
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const start = 0;
+    const end = value;
+    const duration = 900;
+    const startTime = performance.now();
+
+    const tick = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(start + (end - start) * eased);
+      if (progress < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [value]);
+
+  return <>{display.toFixed(decimals)}{suffix}</>;
+}
+
+// ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
-
 export default function App() {
   const [teams, setTeams]                 = useState([]);
   const [homeTeam, setHomeTeam]           = useState("");
@@ -18,14 +44,14 @@ export default function App() {
   const [fetchingTeams, setFetchingTeams] = useState(true);
   const [error, setError]                 = useState(null);
   const [prediction, setPrediction]       = useState(null);
+  const [revealed, setRevealed]           = useState(false);
 
   useEffect(() => {
-    let cancelled = false;      // FIX: guard against setting state after unmount
-
+    let cancelled = false;
     setFetchingTeams(true);
     fetch(`${API_BASE}/teams`)
       .then((r) => {
-        if (!r.ok) throw new Error(`Server responded with ${r.status} ${r.statusText}`);
+        if (!r.ok) throw new Error(`Server responded with ${r.status}`);
         return r.json();
       })
       .then((data) => {
@@ -39,27 +65,19 @@ export default function App() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(
-          `Could not connect to the backend: ${err.message}. ` +
-          `Make sure it is running and VITE_API_BASE_URL is set correctly.`
-        );
+        setError(`Backend unreachable: ${err.message}`);
       })
-      .finally(() => {
-        if (!cancelled) setFetchingTeams(false);
-      });
-
+      .finally(() => { if (!cancelled) setFetchingTeams(false); });
     return () => { cancelled = true; };
   }, []);
 
-  // FIX: handlePredict no longer takes `e` — it is wired to onClick on the
-  // button, not onSubmit, to avoid implicit form submission in some browsers.
-  // Using a <div> wrapper instead of <form> removes the need for e.preventDefault().
   const handlePredict = useCallback(async () => {
     setError(null);
     setPrediction(null);
+    setRevealed(false);
 
     if (homeTeam === awayTeam) {
-      setError("Home and Away teams cannot be the same.");
+      setError("Select two different teams.");
       return;
     }
 
@@ -70,28 +88,15 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ home_team: homeTeam, away_team: awayTeam }),
       });
-
       if (!res.ok) {
         let detail = `Error ${res.status}`;
-        try {
-          const errBody = await res.json();
-          detail = errBody.detail ?? detail;
-        } catch {
-          // JSON parse failed — keep the status code message
-        }
+        try { detail = (await res.json()).detail ?? detail; } catch {}
         throw new Error(detail);
       }
-
       const data = await res.json();
-      // FIX: validate that the response has the required fields before setting state
-      if (
-        typeof data.home_win_probability !== "number" ||
-        typeof data.draw_probability     !== "number" ||
-        typeof data.away_win_probability !== "number"
-      ) {
-        throw new Error("Unexpected response format from server.");
-      }
+      if (typeof data.home_win_probability !== "number") throw new Error("Unexpected response format.");
       setPrediction(data);
+      setTimeout(() => setRevealed(true), 50);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -100,163 +105,261 @@ export default function App() {
   }, [homeTeam, awayTeam]);
 
   return (
-    <div className="app-container">
-      <h1 className="title">AI Match Predictor</h1>
-      <p className="subtitle">
-        Trained on 15,960 matches &middot; 6 leagues &middot; 7 seasons &middot; 120 teams
-      </p>
+    <div className="app">
+      {/* Background grid */}
+      <div className="bg-grid" aria-hidden="true" />
 
-      <div className="glass-card">
-        {/* FIX: use a <div> instead of <form> to avoid any native submit behaviour */}
-        <div className="prediction-form">
-          <div className="team-selectors">
-            <TeamSelect
-              label="Home Team"
+      {/* Header */}
+      <header className="header">
+        <div className="header-inner">
+          <div className="logo-lockup">
+            <span className="logo-icon" aria-hidden="true">⚽</span>
+            <div>
+              <div className="logo-text">MATCH ORACLE</div>
+              <div className="logo-sub">AI · v2 · 120 teams · 6 leagues</div>
+            </div>
+          </div>
+          <div className="header-badge">ML POWERED</div>
+        </div>
+      </header>
+
+      {/* Hero strip */}
+      <section className="hero">
+        <div className="hero-inner">
+          <h1 className="hero-title">
+            <span className="hero-title-line">WHO</span>
+            <span className="hero-title-line accent">WINS?</span>
+          </h1>
+          <p className="hero-desc">
+            Trained on <strong>15,960 matches</strong> · 26 features · ELO + xG + form + H2H
+          </p>
+        </div>
+      </section>
+
+      {/* Main card */}
+      <main className="main">
+        <div className="card">
+
+          {/* Team picker */}
+          <div className="picker">
+            <TeamColumn
+              side="HOME"
               value={homeTeam}
               teams={teams}
               loading={fetchingTeams}
               onChange={setHomeTeam}
+              accent="var(--home)"
             />
-            <div className="vs-badge">VS</div>
-            <TeamSelect
-              label="Away Team"
+
+            <div className="versus-block" aria-hidden="true">
+              <div className="versus-line" />
+              <div className="versus-text">VS</div>
+              <div className="versus-line" />
+            </div>
+
+            <TeamColumn
+              side="AWAY"
               value={awayTeam}
               teams={teams}
               loading={fetchingTeams}
               onChange={setAwayTeam}
+              accent="var(--away)"
             />
           </div>
 
+          {/* Error */}
           {error && (
-            <div className="error-message" role="alert">
+            <div className="error-strip" role="alert">
+              <span className="error-icon">!</span>
               {error}
             </div>
           )}
 
+          {/* CTA */}
           <button
-            type="button"
-            className={`submit-btn ${loading ? "loading" : ""}`}
+            className={`cta-btn ${loading ? "cta-loading" : ""}`}
             disabled={loading || fetchingTeams || teams.length === 0}
             onClick={handlePredict}
+            type="button"
           >
-            {loading ? "" : "Predict Match Outcome"}
+            {loading ? (
+              <span className="cta-spinner" aria-label="Predicting…" />
+            ) : (
+              <>
+                <span className="cta-label">PREDICT OUTCOME</span>
+                <span className="cta-arrow" aria-hidden="true">→</span>
+              </>
+            )}
           </button>
         </div>
 
+        {/* Results */}
         {prediction && (
-          <Results
+          <ResultsPanel
             prediction={prediction}
             homeTeam={homeTeam}
             awayTeam={awayTeam}
+            revealed={revealed}
           />
         )}
-      </div>
+
+        {/* Stats strip */}
+        <div className="stats-strip">
+          {[
+            { label: "MATCHES TRAINED", value: "15,960" },
+            { label: "LEAGUES",         value: "6" },
+            { label: "SEASONS",         value: "7" },
+            { label: "FEATURES",        value: "26" },
+          ].map(({ label, value }) => (
+            <div className="stat-item" key={label}>
+              <div className="stat-value">{value}</div>
+              <div className="stat-label">{label}</div>
+            </div>
+          ))}
+        </div>
+      </main>
+
+      <footer className="footer">
+        Predictions are probabilistic · Not financial advice · For entertainment
+      </footer>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// TeamColumn
 // ---------------------------------------------------------------------------
-
-function TeamSelect({ label, value, teams, loading, onChange }) {
+function TeamColumn({ side, value, teams, loading, onChange, accent }) {
   return (
-    <div className="input-group">
-      <label>{label}</label>
+    <div className="team-col">
+      <div className="team-side-label" style={{ color: accent }}>{side}</div>
       {loading ? (
-        <div className="select-placeholder">Loading teams&hellip;</div>
+        <div className="team-skeleton">Loading…</div>
       ) : (
-        <select value={value} onChange={(e) => onChange(e.target.value)}>
-          {teams.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
+        <div className="select-wrap">
+          <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            style={{ "--accent": accent }}
+            className="team-select"
+          >
+            {teams.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <span className="select-chevron" aria-hidden="true" style={{ color: accent }}>▾</span>
+        </div>
+      )}
+      {value && !loading && (
+        <div className="team-name-display" style={{ "--accent": accent }}>
+          {value}
+        </div>
       )}
     </div>
   );
 }
 
-function Results({ prediction, homeTeam, awayTeam }) {
-  const colorMap = {
-    "Home Win": "var(--home-color)",
-    "Away Win": "var(--away-color)",
-    Draw:       "var(--draw-color)",
+// ---------------------------------------------------------------------------
+// ResultsPanel
+// ---------------------------------------------------------------------------
+function ResultsPanel({ prediction, homeTeam, awayTeam, revealed }) {
+  const outcomeColor = {
+    "Home Win": "var(--home)",
+    "Away Win": "var(--away)",
+    Draw:       "var(--draw)",
   };
 
+  const bars = [
+    { label: homeTeam,   value: prediction.home_win_probability, type: "home", id: "hw" },
+    { label: "Draw",     value: prediction.draw_probability,     type: "draw", id: "dr" },
+    { label: awayTeam,   value: prediction.away_win_probability, type: "away", id: "aw" },
+  ];
+
+  const winner = bars.reduce((a, b) => (b.value > a.value ? b : a));
+
   return (
-    <div className="results-container">
-      <div className="prediction-winner">
-        Predicted Outcome:&nbsp;
-        <span
-          className="winner-highlight"
-          style={{ color: colorMap[prediction.prediction] ?? "var(--text-main)" }}
+    <div className={`results ${revealed ? "results--visible" : ""}`}>
+
+      {/* Verdict banner */}
+      <div className="verdict-banner">
+        <div className="verdict-label">PREDICTED RESULT</div>
+        <div
+          className="verdict-outcome"
+          style={{ color: outcomeColor[prediction.prediction] ?? "var(--text)" }}
         >
-          {prediction.prediction}
+          {prediction.prediction.toUpperCase()}
+        </div>
+        <div className="verdict-team">
+          {prediction.prediction === "Draw"
+            ? "No clear favourite"
+            : prediction.prediction === "Home Win"
+              ? homeTeam
+              : awayTeam}
+        </div>
+      </div>
+
+      {/* ELO comparison */}
+      <div className="elo-track">
+        <EloBlock team={homeTeam} elo={prediction.home_elo} color="var(--home)" revealed={revealed} />
+        <div className="elo-divider">
+          <div className="elo-divider-label">ELO</div>
+        </div>
+        <EloBlock team={awayTeam} elo={prediction.away_elo} color="var(--away)" revealed={revealed} align="right" />
+      </div>
+
+      {/* Probability bars */}
+      <div className="prob-grid">
+        {bars.map((bar) => (
+          <ProbBar
+            key={bar.id}
+            label={bar.label}
+            value={bar.value}
+            type={bar.type}
+            isWinner={bar.id === winner.id}
+            revealed={revealed}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// EloBlock
+// ---------------------------------------------------------------------------
+function EloBlock({ team, elo, color, revealed, align = "left" }) {
+  return (
+    <div className={`elo-block elo-block--${align}`}>
+      <div className="elo-team-name" style={{ color }}>{team}</div>
+      <div className="elo-score" style={{ color }}>
+        {revealed ? <AnimatedNumber value={elo} decimals={0} /> : "—"}
+      </div>
+      <div className="elo-score-label">ELO RATING</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ProbBar
+// ---------------------------------------------------------------------------
+function ProbBar({ label, value, type, isWinner, revealed }) {
+  const safe = typeof value === "number" && isFinite(value) ? value : 0;
+  const pct  = (Math.min(Math.max(safe, 0), 1) * 100);
+
+  return (
+    <div className={`prob-row ${isWinner ? "prob-row--winner" : ""}`}>
+      <div className="prob-meta">
+        <span className="prob-label">{label}</span>
+        <span className="prob-pct">
+          {revealed ? <AnimatedNumber value={pct} decimals={1} suffix="%" /> : "—"}
         </span>
       </div>
-
-      <div className="elo-row">
-        <EloChip label={homeTeam} elo={prediction.home_elo} color="var(--home-color)" />
-        <span className="elo-sep">ELO Rating</span>
-        <EloChip label={awayTeam} elo={prediction.away_elo} color="var(--away-color)" />
-      </div>
-
-      <div className="bars-container">
-        <ProgressBar
-          label={`Home Win (${homeTeam})`}
-          value={prediction.home_win_probability}
-          type="home"
+      <div className="prob-track" role="progressbar" aria-valuenow={pct.toFixed(1)} aria-valuemin="0" aria-valuemax="100">
+        <div
+          className={`prob-fill prob-fill--${type}`}
+          style={{ width: revealed ? `${pct}%` : "0%" }}
         />
-        <ProgressBar
-          label="Draw"
-          value={prediction.draw_probability}
-          type="draw"
-        />
-        <ProgressBar
-          label={`Away Win (${awayTeam})`}
-          value={prediction.away_win_probability}
-          type="away"
-        />
-      </div>
-    </div>
-  );
-}
-
-function EloChip({ label, elo, color }) {
-  return (
-    <div className="elo-chip">
-      <span className="elo-team" style={{ color }}>
-        {label}
-      </span>
-      {/* FIX: guard against non-finite elo values before calling toFixed */}
-      <span className="elo-value">
-        {typeof elo === "number" && isFinite(elo) ? elo.toFixed(0) : "—"}
-      </span>
-    </div>
-  );
-}
-
-function ProgressBar({ label, value, type }) {
-  // FIX: guard against null/undefined/NaN before computing percentage
-  const safeValue = typeof value === "number" && isFinite(value) ? value : 0;
-  const pct       = (Math.min(Math.max(safeValue, 0), 1) * 100).toFixed(1);
-
-  return (
-    <div className={`bar-wrapper ${type}-bar`}>
-      <div className="bar-labels">
-        <span>{label}</span>
-        <span>{pct}%</span>
-      </div>
-      <div
-        className="progress-bg"
-        role="progressbar"
-        aria-valuenow={pct}
-        aria-valuemin="0"
-        aria-valuemax="100"
-      >
-        <div className="progress-fill" style={{ width: `${pct}%` }} />
+        {isWinner && <div className="prob-winner-pip" />}
       </div>
     </div>
   );
