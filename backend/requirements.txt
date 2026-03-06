@@ -1,12 +1,14 @@
+# ── Web framework ──────────────────────────────────────────────────────────
 fastapi==0.110.0
-uvicorn==0.27.0
+uvicorn[standard]==0.27.0      # [standard] pulls in httptools + uvloop for prod perf
 pydantic==2.6.0
 python-dotenv==1.0.1
 python-multipart==0.0.9
 
-# ML & Data Science
+# ── ML & Data Science ──────────────────────────────────────────────────────
+# FIX: pinned numpy first because scikit-learn and pandas must agree on the ABI.
+numpy==1.26.4
+pandas==2.2.0
 scikit-learn==1.4.0
 xgboost==2.0.3
-pandas==2.2.0
-numpy==1.26.4
 scipy==1.12.0
