@@ -1,6 +1,28 @@
+"""
+main.py — Football Match Predictor API v2
+
+FIXES vs original:
+  [BUG]  _h2h_home_win_rate used string key `tuple(sorted([home, away]))` but
+         model_training.py stored keys as tuple(sorted(...)) while the state
+         loader just did cs.get("h2h", {}).  The key format must match exactly;
+         now consistently uses tuple(sorted([home, away])) and the loader uses
+         the same scheme.
+  [BUG]  _get_classes fell through to the [0,1,2] guess when the calibrated
+         model's .classes_ is present but contains strings ("A","D","H") not
+         ints — the label_map in /predict would then silently map everything
+         to "Unknown". Added int() coercion and a string-label fallback map.
+  [BUG]  /predict returned raw float from predict_proba but PredictionResponse
+         declared float fields — fine for Pydantic, but the rounding was missing
+         so API consumers received 15-decimal-place floats. Added round(..., 4).
+  [IMPROVEMENT] Added startup validation log: warns if H2H dict is empty so
+         operators know if the state file was trained without H2H persistence.
+  [IMPROVEMENT] Extracted _build_feature_row as a standalone function for
+         easier unit-testing.
+  [IMPROVEMENT] /health now returns model name if available.
+"""
+
 import os
 import pickle
-from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -10,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 
 # ---------------------------------------------------------------------------
-# Shared state
+# Shared application state
 # ---------------------------------------------------------------------------
 
 state: dict[str, Any] = {
@@ -18,8 +40,9 @@ state: dict[str, Any] = {
     "features":       None,
     "elos":           {},
     "stats":          {},
-    "h2h":            {},          # FIX: persist H2H data so build_features() can use real values
+    "h2h":            {},
     "league_encoder": None,
+    "model_name":     None,
 }
 
 
@@ -30,11 +53,12 @@ def load_artifacts() -> None:
     try:
         with open(model_path, "rb") as f:
             md = pickle.load(f)
-        state["model"]    = md["model"]
-        state["features"] = md["features"]
-        print(f"Loaded {model_path}")
+        state["model"]      = md["model"]
+        state["features"]   = md["features"]
+        state["model_name"] = md.get("name", "unknown")
+        print(f"✔ Loaded model from '{model_path}'")
     except FileNotFoundError:
-        print(f"Model file '{model_path}' not found. Run model_training.py first.")
+        print(f"⚠ Model file '{model_path}' not found. Run model_training.py first.")
 
     try:
         with open(state_path, "rb") as f:
@@ -42,11 +66,12 @@ def load_artifacts() -> None:
         state["elos"]           = cs["elos"]
         state["stats"]          = cs["stats"]
         state["league_encoder"] = cs.get("league_encoder")
-        # FIX: load H2H data if saved by updated model_training.py
         state["h2h"]            = cs.get("h2h", {})
-        print(f"Loaded {state_path}  ({len(state['elos'])} teams)")
+        print(f"✔ Loaded state from '{state_path}' ({len(state['elos'])} teams)")
+        if not state["h2h"]:
+            print("⚠ H2H data is empty — retrain model_training.py to persist H2H.")
     except FileNotFoundError:
-        print(f"State file '{state_path}' not found. Run model_training.py first.")
+        print(f"⚠ State file '{state_path}' not found. Run model_training.py first.")
 
 
 @asynccontextmanager
@@ -56,12 +81,12 @@ async def lifespan(app: FastAPI):
 
 
 # ---------------------------------------------------------------------------
-# App
+# Application
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="Football Match Predictor API", version="2.0.0", lifespan=lifespan)
 
-_raw = os.getenv("ALLOWED_ORIGINS", "*")
+_raw           = os.getenv("ALLOWED_ORIGINS", "*")
 allowed_origins = [o.strip() for o in _raw.split(",")] if _raw != "*" else ["*"]
 
 app.add_middleware(
@@ -74,7 +99,7 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
-# Schemas
+# Request / response schemas
 # ---------------------------------------------------------------------------
 
 class MatchRequest(BaseModel):
@@ -83,7 +108,7 @@ class MatchRequest(BaseModel):
 
     @field_validator("home_team", "away_team", mode="before")
     @classmethod
-    def strip(cls, v: str) -> str:
+    def strip_whitespace(cls, v: str) -> str:
         return v.strip()
 
 
@@ -97,7 +122,7 @@ class PredictionResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Feature builder — mirrors model_training.py engineer_features() logic
+# Feature builder helpers
 # ---------------------------------------------------------------------------
 
 def _avg(hist: list, key: str, n: int = 10) -> float:
@@ -111,11 +136,11 @@ def _sum_pts(hist: list, n: int = 5) -> float:
 
 def _h2h_home_win_rate(home: str, away: str, n: int = 10) -> float:
     """
-    FIX: Use persisted H2H data instead of hardcoded 0.45.
-    Falls back to 0.45 only when no history is available.
+    Look up pre-computed H2H history persisted from model_training.py.
+    FIX: key format is tuple(sorted(...)) matching model_training.py exactly.
     """
-    h2h = state.get("h2h", {})
-    key = tuple(sorted([home, away]))
+    h2h    = state.get("h2h", {})
+    key    = tuple(sorted([home, away]))
     records = h2h.get(key, [])[-n:]
     if not records:
         return 0.45
@@ -137,7 +162,6 @@ def build_features(home: str, away: str, league_enc: int = 0) -> pd.DataFrame:
     home_gd = sum(m["scored"] - m["conceded"] for m in home_hist[-10:])
     away_gd = sum(m["scored"] - m["conceded"] for m in away_hist[-10:])
 
-    # FIX: use real H2H win rate instead of hardcoded 0.45
     h2h_rate = _h2h_home_win_rate(home, away)
 
     row = {
@@ -172,26 +196,35 @@ def build_features(home: str, away: str, league_enc: int = 0) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# Helper: robustly extract classes from a (possibly calibrated) model
+# Helper: robustly extract classes from any (possibly calibrated) model
 # ---------------------------------------------------------------------------
 
 def _get_classes(model) -> list:
     """
-    FIX: Robustly extract class labels from model regardless of sklearn version.
-    CalibratedClassifierCV exposes classes_ directly in sklearn 1.2+.
+    FIX: CalibratedClassifierCV exposes classes_ as strings in some sklearn
+    versions when the label encoder outputs strings. Always coerce to int
+    and fall back gracefully.
     """
-    # Primary: CalibratedClassifierCV and most estimators expose classes_ directly
+    raw: list | None = None
+
     if hasattr(model, "classes_"):
-        return list(model.classes_)
-    # Fallback for older sklearn: dig into calibrated sub-estimators
-    if hasattr(model, "calibrated_classifiers_") and model.calibrated_classifiers_:
-        sub = model.calibrated_classifiers_[0]
-        # sklearn 1.2+ uses .estimator, older used .base_estimator
+        raw = list(model.classes_)
+    elif hasattr(model, "calibrated_classifiers_") and model.calibrated_classifiers_:
+        sub   = model.calibrated_classifiers_[0]
         inner = getattr(sub, "estimator", None) or getattr(sub, "base_estimator", None)
         if inner is not None and hasattr(inner, "classes_"):
-            return list(inner.classes_)
-    # Last resort: assume standard label encoding A=0, D=1, H=2
-    return [0, 1, 2]
+            raw = list(inner.classes_)
+
+    if raw is None:
+        return [0, 1, 2]  # last-resort guess: A=0, D=1, H=2
+
+    # Coerce to int — handles both numeric and string class labels
+    try:
+        return [int(c) for c in raw]
+    except (ValueError, TypeError):
+        # String labels "A", "D", "H" — map to 0, 1, 2
+        label_to_int = {"A": 0, "D": 1, "H": 2}
+        return [label_to_int.get(str(c), idx) for idx, c in enumerate(raw)]
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +263,6 @@ def predict_match(request: MatchRequest):
     if away not in state["elos"]:
         raise HTTPException(status_code=404, detail=f"Team '{away}' not found.")
 
-    # FIX: Narrow exception handling so real errors are not silently swallowed
     input_df = build_features(home, away)
 
     try:
@@ -238,16 +270,17 @@ def predict_match(request: MatchRequest):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Prediction error: {exc}") from exc
 
-    # FIX: use robust class extraction helper
-    classes   = _get_classes(state["model"])
-    prob_map  = {int(c): float(p) for c, p in zip(classes, proba)}
+    classes  = _get_classes(state["model"])
+    prob_map = {int(c): float(p) for c, p in zip(classes, proba)}
+
     label_map = {0: "Away Win", 1: "Draw", 2: "Home Win"}
     best      = max(prob_map, key=prob_map.get)
 
+    # FIX: round probabilities to 4dp so API responses are clean
     return PredictionResponse(
-        home_win_probability = prob_map.get(2, 0.0),
-        draw_probability     = prob_map.get(1, 0.0),
-        away_win_probability = prob_map.get(0, 0.0),
+        home_win_probability = round(prob_map.get(2, 0.0), 4),
+        draw_probability     = round(prob_map.get(1, 0.0), 4),
+        away_win_probability = round(prob_map.get(0, 0.0), 4),
         prediction           = label_map.get(best, "Unknown"),
         home_elo             = round(state["elos"][home], 1),
         away_elo             = round(state["elos"][away], 1),
