@@ -1,65 +1,77 @@
-import { useState, useEffect, useCallback } from 'react';
-import './index.css';
+import { useState, useEffect, useCallback } from "react";
+import "./index.css";
 
+// FIX: strip trailing slash defensively so URL joins never produce double-slashes
 const API_BASE = import.meta.env.VITE_API_BASE_URL
-  ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '')
-  : '/api';
+  ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "")
+  : "/api";
 
 // ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
 
-function App() {
+export default function App() {
   const [teams, setTeams]                 = useState([]);
-  const [homeTeam, setHomeTeam]           = useState('');
-  const [awayTeam, setAwayTeam]           = useState('');
+  const [homeTeam, setHomeTeam]           = useState("");
+  const [awayTeam, setAwayTeam]           = useState("");
   const [loading, setLoading]             = useState(false);
   const [fetchingTeams, setFetchingTeams] = useState(true);
   const [error, setError]                 = useState(null);
   const [prediction, setPrediction]       = useState(null);
 
   useEffect(() => {
+    let cancelled = false;      // FIX: guard against setting state after unmount
+
     setFetchingTeams(true);
     fetch(`${API_BASE}/teams`)
-      .then(r => {
-        if (!r.ok) throw new Error(`Server error ${r.status}`);
+      .then((r) => {
+        if (!r.ok) throw new Error(`Server responded with ${r.status} ${r.statusText}`);
         return r.json();
       })
-      .then(data => {
-        const list = data.teams ?? [];
+      .then((data) => {
+        if (cancelled) return;
+        const list = Array.isArray(data.teams) ? data.teams : [];
         setTeams(list);
         if (list.length >= 2) {
           setHomeTeam(list[0]);
           setAwayTeam(list[1]);
         }
       })
-      // FIX: capture the actual error message instead of discarding it
-      .catch(err => setError(
-        `Could not connect to the backend: ${err.message}. Make sure it is running on port 8000.`
-      ))
-      .finally(() => setFetchingTeams(false));
+      .catch((err) => {
+        if (cancelled) return;
+        setError(
+          `Could not connect to the backend: ${err.message}. ` +
+          `Make sure it is running and VITE_API_BASE_URL is set correctly.`
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setFetchingTeams(false);
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
-  const handlePredict = useCallback(async (e) => {
-    e.preventDefault();
+  // FIX: handlePredict no longer takes `e` — it is wired to onClick on the
+  // button, not onSubmit, to avoid implicit form submission in some browsers.
+  // Using a <div> wrapper instead of <form> removes the need for e.preventDefault().
+  const handlePredict = useCallback(async () => {
     setError(null);
     setPrediction(null);
 
     if (homeTeam === awayTeam) {
-      setError('Home and Away teams cannot be the same.');
+      setError("Home and Away teams cannot be the same.");
       return;
     }
 
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/predict`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam }),
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ home_team: homeTeam, away_team: awayTeam }),
       });
 
       if (!res.ok) {
-        // FIX: safely parse error JSON, fallback to status text
         let detail = `Error ${res.status}`;
         try {
           const errBody = await res.json();
@@ -70,7 +82,16 @@ function App() {
         throw new Error(detail);
       }
 
-      setPrediction(await res.json());
+      const data = await res.json();
+      // FIX: validate that the response has the required fields before setting state
+      if (
+        typeof data.home_win_probability !== "number" ||
+        typeof data.draw_probability     !== "number" ||
+        typeof data.away_win_probability !== "number"
+      ) {
+        throw new Error("Unexpected response format from server.");
+      }
+      setPrediction(data);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -86,8 +107,8 @@ function App() {
       </p>
 
       <div className="glass-card">
-        {/* FIX: onSubmit on the form correctly prevents default; button stays type="submit" */}
-        <form className="prediction-form" onSubmit={handlePredict}>
+        {/* FIX: use a <div> instead of <form> to avoid any native submit behaviour */}
+        <div className="prediction-form">
           <div className="team-selectors">
             <TeamSelect
               label="Home Team"
@@ -106,16 +127,21 @@ function App() {
             />
           </div>
 
-          {error && <div className="error-message" role="alert">{error}</div>}
+          {error && (
+            <div className="error-message" role="alert">
+              {error}
+            </div>
+          )}
 
           <button
-            type="submit"
-            className={`submit-btn ${loading ? 'loading' : ''}`}
+            type="button"
+            className={`submit-btn ${loading ? "loading" : ""}`}
             disabled={loading || fetchingTeams || teams.length === 0}
+            onClick={handlePredict}
           >
-            {loading ? '' : 'Predict Match Outcome'}
+            {loading ? "" : "Predict Match Outcome"}
           </button>
-        </form>
+        </div>
 
         {prediction && (
           <Results
@@ -137,26 +163,26 @@ function TeamSelect({ label, value, teams, loading, onChange }) {
   return (
     <div className="input-group">
       <label>{label}</label>
-      {loading
-        ? <div className="select-placeholder">Loading teams&hellip;</div>
-        : (
-          <select value={value} onChange={e => onChange(e.target.value)} required>
-            {/* FIX: ensure every option has a stable, unique key */}
-            {teams.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        )
-      }
+      {loading ? (
+        <div className="select-placeholder">Loading teams&hellip;</div>
+      ) : (
+        <select value={value} onChange={(e) => onChange(e.target.value)}>
+          {teams.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
 
 function Results({ prediction, homeTeam, awayTeam }) {
   const colorMap = {
-    'Home Win': 'var(--home-color)',
-    'Away Win': 'var(--away-color)',
-    'Draw':     'var(--draw-color)',
+    "Home Win": "var(--home-color)",
+    "Away Win": "var(--away-color)",
+    Draw:       "var(--draw-color)",
   };
 
   return (
@@ -165,7 +191,7 @@ function Results({ prediction, homeTeam, awayTeam }) {
         Predicted Outcome:&nbsp;
         <span
           className="winner-highlight"
-          style={{ color: colorMap[prediction.prediction] ?? 'var(--text-main)' }}
+          style={{ color: colorMap[prediction.prediction] ?? "var(--text-main)" }}
         >
           {prediction.prediction}
         </span>
@@ -201,16 +227,21 @@ function Results({ prediction, homeTeam, awayTeam }) {
 function EloChip({ label, elo, color }) {
   return (
     <div className="elo-chip">
-      <span className="elo-team" style={{ color }}>{label}</span>
-      <span className="elo-value">{elo}</span>
+      <span className="elo-team" style={{ color }}>
+        {label}
+      </span>
+      {/* FIX: guard against non-finite elo values before calling toFixed */}
+      <span className="elo-value">
+        {typeof elo === "number" && isFinite(elo) ? elo.toFixed(0) : "—"}
+      </span>
     </div>
   );
 }
 
 function ProgressBar({ label, value, type }) {
-  // FIX: guard against null/undefined value before calling toFixed
-  const safeValue = typeof value === 'number' && isFinite(value) ? value : 0;
-  const pct = (Math.min(Math.max(safeValue, 0), 1) * 100).toFixed(1);
+  // FIX: guard against null/undefined/NaN before computing percentage
+  const safeValue = typeof value === "number" && isFinite(value) ? value : 0;
+  const pct       = (Math.min(Math.max(safeValue, 0), 1) * 100).toFixed(1);
 
   return (
     <div className={`bar-wrapper ${type}-bar`}>
@@ -230,5 +261,3 @@ function ProgressBar({ label, value, type }) {
     </div>
   );
 }
-
-export default App;
