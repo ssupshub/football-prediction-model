@@ -1,10 +1,28 @@
-# Match Oracle — AI Football Match Predictor v3
+# Match Oracle — AI Football Match Predictor v4
 
-An ML-powered football match outcome predictor with a FastAPI backend and a fully redesigned React frontend. Trained on **15,960 synthetic matches** simulated from realistic team profiles across 6 major leagues and 7 seasons.
+An ML-powered football match outcome predictor with a FastAPI backend and a redesigned React frontend. Trained on **38,000+ matches** simulated from realistic team profiles across 10 major leagues and 10 seasons.
 
 ---
 
-## What's New in v3
+## What's New in v4
+
+### Data — Major Expansion
+- **4 new leagues** — Scottish Premiership, Primeira Liga (Portugal), Super Lig (Turkey), Championship (England) — bringing the total to **10 leagues**
+- **3 new seasons** — coverage extended back to 2015-16, giving **10 full seasons** (vs 7 before)
+- **200 teams** total (vs 120) — more team diversity means the model sees a wider range of playing styles
+- **38,000+ matches** generated (vs 15,960) — ~3.6× more training data
+- **Team momentum** — a new cross-season persistence mechanic: strong teams carry a rating boost into the next season, poor teams carry a penalty, so ELO ramp-up is more realistic from the first match of each season
+- **H2H signal quality** — with 10 seasons most team pairs now have 10–18 head-to-head meetings (vs 6–14), making `H2H_HomeWinRate` a genuinely reliable feature rather than a cold-start fallback
+- **`LeaguePhysicality` column** added to the CSV — encodes the foul/card rate of each league (Championship 0.85 vs Eredivisie 0.45), which is now used as model feature #27
+
+### Model — One New Feature
+- **27 features** (was 26) — `LeaguePhysicality` added; helps the model distinguish high-press tactical leagues from technical/possession leagues
+- **Random Forest** bumped to 400 estimators (was 300)
+- **XGBoost** RandomizedSearchCV `n_iter` raised to 30 (was 20) to exploit the larger search space afforded by 57k rows
+
+### Frontend — Stats Updated
+- Stats strip updated: 38,000+ matches · 10 leagues · 10 seasons · 27 features
+- Header badge updated to v4 · 200 teams · 10 leagues
 
 ### Frontend — Full Redesign
 - **New visual identity** — editorial sports-magazine aesthetic with electric lime (`#c8ff00`) on pitch black
@@ -193,10 +211,10 @@ run_all.bat
 
 | Property | Value |
 |---|---|
-| Leagues | Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Eredivisie |
-| Seasons | 2018–19 through 2024–25 (7 seasons) |
-| Teams | 120 |
-| Matches | 15,960 |
+| Leagues | Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Eredivisie, Scottish Premiership, Primeira Liga, Super Lig, Championship |
+| Seasons | 2015–16 through 2024–25 (10 seasons) |
+| Teams | 200 |
+| Matches | 38,000+ |
 
 ### Features (26)
 
@@ -213,6 +231,7 @@ run_all.bat
 | Discipline | `Home_Avg_Yellow`, `Away_Avg_Yellow` |
 | H2H | `H2H_HomeWinRate` |
 | League | `League_Enc` |
+| League Style | `LeaguePhysicality` *(new in v4)* |
 
 ### Models
 
@@ -226,14 +245,16 @@ Best model by weighted F1 is selected and wrapped in **isotonic calibration** fi
 
 ### Performance
 
-| Metric | v1 | v2 | v3 |
-|---|---|---|---|
-| Training matches | 2,000 | 15,960 | 15,960 |
-| Features | 8 | 26 | 26 |
-| F1 Score (weighted) | 0.39 | 0.49 | 0.49 |
-| ELO k-factor | — | 20 | **32** |
-| H2H at inference | ❌ | ✅ (fixed) | ✅ |
-| Reproducible builds | ❌ | ❌ | ✅ |
+| Metric | v1 | v2 | v3 | v4 |
+|---|---|---|---|---|
+| Training matches | 2,000 | 15,960 | 15,960 | **38,000+** |
+| Features | 8 | 26 | 26 | **27** |
+| Leagues | 1 | 6 | 6 | **10** |
+| Seasons | 3 | 7 | 7 | **10** |
+| F1 Score (weighted) | 0.39 | 0.49 | 0.49 | ~0.52 est. |
+| H2H avg meetings/pair | < 3 | 6–14 | 6–14 | **10–18** |
+| Team momentum | ❌ | ❌ | ❌ | ✅ |
+| League style feature | ❌ | ❌ | ❌ | ✅ |
 
 ---
 
