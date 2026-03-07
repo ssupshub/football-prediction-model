@@ -116,7 +116,7 @@ export default function App() {
             <span className="logo-icon" aria-hidden="true">⚽</span>
             <div>
               <div className="logo-text">MATCH ORACLE</div>
-              <div className="logo-sub">AI · v2 · 120 teams · 6 leagues</div>
+              <div className="logo-sub">AI · v4 · 200 teams · 10 leagues</div>
             </div>
           </div>
           <div className="header-badge">ML POWERED</div>
@@ -131,7 +131,7 @@ export default function App() {
             <span className="hero-title-line accent">WINS?</span>
           </h1>
           <p className="hero-desc">
-            Trained on <strong>15,960 matches</strong> · 26 features · ELO + xG + form + H2H
+            Trained on <strong>38,000 matches</strong> · 27 features · ELO + xG + form + H2H
           </p>
         </div>
       </section>
@@ -206,10 +206,10 @@ export default function App() {
         {/* Stats strip */}
         <div className="stats-strip">
           {[
-            { label: "MATCHES TRAINED", value: "15,960" },
-            { label: "LEAGUES",         value: "6" },
-            { label: "SEASONS",         value: "7" },
-            { label: "FEATURES",        value: "26" },
+            { label: "MATCHES TRAINED", value: "38,000" },
+            { label: "LEAGUES",         value: "10" },
+            { label: "SEASONS",         value: "10" },
+            { label: "FEATURES",        value: "27" },
           ].map(({ label, value }) => (
             <div className="stat-item" key={label}>
               <div className="stat-value">{value}</div>
