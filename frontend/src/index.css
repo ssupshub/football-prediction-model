@@ -765,3 +765,539 @@ body {
     border-radius: var(--radius-lg);
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   v4 ADDITIONS — Tab bar, Detailed Report, How It Works, centered header
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Header: centered layout fix ────────────────────────────────────────── */
+.header-inner {
+  justify-content: center;
+  position: relative;
+}
+
+.logo-lockup {
+  /* centre in full width */
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-right: auto; /* push logo to true centre */
+}
+
+.nav-link {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-link:hover { color: var(--text); }
+
+.nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--home);
+  display: inline-block;
+  animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+/* ── Hero: centered ─────────────────────────────────────────────────────── */
+.hero-inner {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero-eyebrow {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--home);
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  opacity: 0.8;
+}
+
+.hero-title {
+  align-items: center;
+}
+
+.hero-desc {
+  text-align: center;
+  max-width: 480px;
+}
+
+/* ── Tab bar ─────────────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+
+.tab-btn:last-child { border-right: none; }
+
+.tab-btn:hover:not(.tab-btn--active) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.tab-btn--active {
+  color: #080c0f;
+  background: var(--home);
+}
+
+/* ── Results report variant ──────────────────────────────────────────────── */
+.results--report {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.report-section {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--border);
+}
+
+.report-section:last-child { border-bottom: none; }
+
+.report-header-section {
+  background: var(--surface-2);
+}
+
+.report-section-title {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.85rem;
+}
+
+.report-summary-text {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--text);
+  margin-bottom: 1rem;
+  max-width: 620px;
+}
+
+.report-confidence {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.report-confidence-label {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.report-confidence-value {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+}
+
+.report-confidence-pct {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+/* H2H grid */
+.h2h-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.h2h-cell {
+  background: var(--surface-2);
+  padding: 1.25rem 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.h2h-label {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.h2h-big {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.h2h-sub {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ELO analysis bars */
+.elo-analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.elo-analysis-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 60px;
+  align-items: center;
+  gap: 1rem;
+}
+
+.elo-analysis-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.82rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.elo-analysis-bar-wrap {
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.elo-analysis-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s var(--ease-out);
+}
+
+.elo-analysis-val {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.9rem;
+  text-align: right;
+  color: var(--text);
+}
+
+.elo-edge-callout {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+/* Implied odds */
+.odds-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.odds-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.odds-team {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  min-height: 2.4em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.odds-value {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.odds-sub {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.odds-disclaimer {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ── How It Works ────────────────────────────────────────────────────────── */
+.how-it-works {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.how-header {
+  background: var(--surface-2);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--border);
+}
+
+.how-intro {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 540px;
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border);
+}
+
+.step-item {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  padding: 1.25rem clamp(1.25rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+
+.step-item:last-child { border-bottom: none; }
+.step-item:hover { background: var(--surface-2); }
+
+.step-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.step-num {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--home);
+  text-transform: uppercase;
+}
+
+.step-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.step-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 560px;
+}
+
+/* Features table */
+.features-table-section {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--border);
+}
+
+.features-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+
+.feature-row:last-child { border-bottom: none; }
+
+.feature-cat {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--home);
+  padding: 0.65rem 1rem;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+}
+
+.feature-items {
+  padding: 0.65rem 1rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+}
+
+/* Leagues grid */
+.leagues-section {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.leagues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.6rem;
+}
+
+.league-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.6rem 0.9rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.league-chip:hover {
+  border-color: var(--border-hi);
+  background: #1a2330;
+}
+
+.league-flag { font-size: 1.1rem; line-height: 1; }
+
+.league-name {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+/* ── Responsive additions ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .logo-lockup {
+    position: static;
+    transform: none;
+  }
+  .header-inner {
+    justify-content: space-between;
+  }
+  .header-nav {
+    display: none;
+  }
+  .h2h-grid {
+    grid-template-columns: 1fr;
+  }
+  .elo-analysis-row {
+    grid-template-columns: 120px 1fr 50px;
+  }
+  .odds-grid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+  .tab-btn {
+    font-size: 0.68rem;
+    padding: 0.75rem 0.5rem;
+  }
+}
+
+@media (max-width: 540px) {
+  .logo-lockup {
+    position: static;
+    transform: none;
+  }
+  .h2h-grid {
+    grid-template-columns: 1fr;
+  }
+  .leagues-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .feature-row {
+    grid-template-columns: 90px 1fr;
+  }
+}
