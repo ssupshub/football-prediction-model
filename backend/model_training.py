@@ -1,11 +1,19 @@
 """
-model_training.py
------------------
-Trains football match outcome prediction models on the rich multi-league dataset.
+model_training.py  — v4
+-----------------------
+Trains football match outcome prediction models on the expanded multi-league dataset.
 
-26 features used:
+v4 changes:
+  [NEW]  27 features — LeaguePhysicality added (foul/card rate scaler per league).
+         Captures cross-league diversity (Championship >> Eredivisie physicality).
+  [NEW]  Dataset is ~57,000 matches (10 leagues × 20 teams × 10 seasons) vs 15,960.
+  [NEW]  XGBoost RandomizedSearchCV n_iter raised 20→30 to exploit larger dataset.
+  [NEW]  RF n_estimators raised 300→400 for better generalisation on 57k rows.
+
+27 features used:
   ELO ratings, form, goals, xG, shots on target, possession,
-  corners, cards, goal difference, H2H win rate, league encoding
+  corners, cards, goal difference, H2H win rate, league encoding,
+  league physicality index
 
 Models evaluated:
   - Logistic Regression (scaled pipeline)
@@ -86,6 +94,8 @@ FEATURES = [
     "H2H_HomeWinRate",
     # League
     "League_Enc",
+    # League style (v4)
+    "LeaguePhysicality",
 ]
 
 
@@ -180,6 +190,7 @@ def engineer_features(df: pd.DataFrame):
             "Away_Avg_Yellow":   _rolling_avg(away_hist, "yellow"),
             "H2H_HomeWinRate":   h2h_rate,
             "League_Enc":        league_e,
+            "LeaguePhysicality": float(row.get("LeaguePhysicality", 0.6)),
         })
 
         # --- post-match update ---
@@ -284,12 +295,12 @@ def train_models() -> None:
             ("clf", LogisticRegression(max_iter=2000, C=0.5, random_state=42)),
         ]),
         "Random Forest": RandomForestClassifier(
-            n_estimators=300, max_depth=12, min_samples_leaf=3,
+            n_estimators=400, max_depth=12, min_samples_leaf=3,
             random_state=42, n_jobs=-1,
         ),
         "XGBoost (tuned)": RandomizedSearchCV(
             XGBClassifier(eval_metric="mlogloss", random_state=42, n_jobs=-1, verbosity=0),
-            xgb_param_dist, n_iter=20, scoring="f1_weighted",
+            xgb_param_dist, n_iter=30, scoring="f1_weighted",
             cv=3, random_state=42, n_jobs=-1, verbose=0,
         ),
     }
