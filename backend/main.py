@@ -84,7 +84,7 @@ async def lifespan(app: FastAPI):
 # Application
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="Football Match Predictor API", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="Football Match Predictor API", version="4.0.0", lifespan=lifespan)
 
 _raw           = os.getenv("ALLOWED_ORIGINS", "*")
 allowed_origins = [o.strip() for o in _raw.split(",")] if _raw != "*" else ["*"]
@@ -147,7 +147,7 @@ def _h2h_home_win_rate(home: str, away: str, n: int = 10) -> float:
     return sum(1 for winner in records if winner == home) / len(records)
 
 
-def build_features(home: str, away: str, league_enc: int = 0) -> pd.DataFrame:
+def build_features(home: str, away: str, league_enc: int = 0, league_phys: float = 0.6) -> pd.DataFrame:
     elos  = state["elos"]
     stats = state["stats"]
 
@@ -191,6 +191,7 @@ def build_features(home: str, away: str, league_enc: int = 0) -> pd.DataFrame:
         "Away_Avg_Yellow":   _avg(away_hist, "yellow"),
         "H2H_HomeWinRate":   h2h_rate,
         "League_Enc":        league_enc,
+        "LeaguePhysicality": league_phys,
     }
     return pd.DataFrame([row])[state["features"]]
 
