@@ -213,6 +213,10 @@ export default function App() {
             </div>
           ))}
         </div>
+
+        {/* ── Leagues Covered — standalone section ── */}
+        <LeaguesCovered />
+
       </main>
 
       <footer className="footer">
@@ -538,6 +542,60 @@ function HowItWorks() {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LeaguesCovered — standalone always-visible section
+// ---------------------------------------------------------------------------
+function LeaguesCovered() {
+  const leagues = [
+    { name: "Premier League",      flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", country: "England",   teams: 20, avg: "2.7" },
+    { name: "La Liga",             flag: "🇪🇸", country: "Spain",     teams: 20, avg: "2.6" },
+    { name: "Bundesliga",          flag: "🇩🇪", country: "Germany",   teams: 20, avg: "3.0" },
+    { name: "Serie A",             flag: "🇮🇹", country: "Italy",     teams: 20, avg: "2.7" },
+    { name: "Ligue 1",             flag: "🇫🇷", country: "France",    teams: 20, avg: "2.7" },
+    { name: "Eredivisie",          flag: "🇳🇱", country: "Netherlands", teams: 20, avg: "3.1" },
+    { name: "Scottish Premiership",flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", country: "Scotland",  teams: 20, avg: "2.9" },
+    { name: "Primeira Liga",       flag: "🇵🇹", country: "Portugal",  teams: 20, avg: "2.6" },
+    { name: "Super Lig",           flag: "🇹🇷", country: "Turkey",    teams: 20, avg: "2.8" },
+    { name: "Championship",        flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", country: "England",   teams: 20, avg: "2.5" },
+  ];
+
+  return (
+    <div className="leagues-section-standalone">
+      <div className="leagues-section-head">
+        <div className="leagues-section-eyebrow">DATA COVERAGE</div>
+        <h2 className="leagues-section-title">10 LEAGUES COVERED</h2>
+        <p className="leagues-section-sub">
+          Every prediction draws from 10 seasons of match data across these competitions — 38,000 matches, 200 teams.
+        </p>
+      </div>
+
+      <div className="leagues-cards-grid">
+        {leagues.map((l, i) => (
+          <div className="league-card" key={l.name}>
+            <div className="league-card-num">0{i + 1}</div>
+            <div className="league-card-flag">{l.flag}</div>
+            <div className="league-card-body">
+              <div className="league-card-name">{l.name}</div>
+              <div className="league-card-country">{l.country}</div>
+            </div>
+            <div className="league-card-stats">
+              <div className="league-card-stat">
+                <span className="league-card-stat-val">{l.teams}</span>
+                <span className="league-card-stat-lbl">teams</span>
+              </div>
+              <div className="league-card-divider" />
+              <div className="league-card-stat">
+                <span className="league-card-stat-val">{l.avg}</span>
+                <span className="league-card-stat-lbl">avg goals</span>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
