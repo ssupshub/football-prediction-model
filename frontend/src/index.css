@@ -1311,3 +1311,198 @@ body {
     grid-template-columns: 90px 1fr;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LEAGUES COVERED — standalone always-visible section
+   ───────────────────────────────────────────────────────────────────────── */
+
+.leagues-section-standalone {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.leagues-section-head {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.leagues-section-eyebrow {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: var(--home);
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.leagues-section-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.75rem, 5vw, 2.75rem);
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1;
+}
+
+.leagues-section-sub {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 520px;
+  margin-top: 0.25rem;
+}
+
+/* Cards grid */
+.leagues-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+}
+
+.league-card {
+  display: grid;
+  grid-template-columns: 28px 2.2rem 1fr auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.1rem clamp(1.25rem, 3vw, 1.75rem);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  transition: background 0.18s;
+  position: relative;
+}
+
+/* Right column: no right border */
+.league-card:nth-child(2n) {
+  border-right: none;
+}
+
+/* Last row: no bottom border */
+.league-card:nth-last-child(-n+2) {
+  border-bottom: none;
+}
+
+/* Odd last item if 10 cards (10th is alone in row) */
+.league-card:last-child {
+  border-bottom: none;
+}
+
+.league-card:hover {
+  background: var(--surface-2);
+}
+
+.league-card:hover .league-card-name {
+  color: var(--home);
+}
+
+.league-card-num {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  line-height: 1;
+}
+
+.league-card-flag {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.league-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.league-card-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(0.88rem, 2vw, 1rem);
+  color: var(--text);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  transition: color 0.18s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.league-card-country {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.league-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.league-card-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.league-card-stat-val {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1rem;
+  color: var(--home);
+  line-height: 1;
+}
+
+.league-card-stat-lbl {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.league-card-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .leagues-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .league-card {
+    border-right: none;
+  }
+
+  .league-card:nth-last-child(-n+2) {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .league-card:last-child {
+    border-bottom: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .league-card {
+    grid-template-columns: 24px 1.8rem 1fr auto;
+    gap: 0.6rem;
+  }
+
+  .league-card-flag {
+    font-size: 1.3rem;
+  }
+}
