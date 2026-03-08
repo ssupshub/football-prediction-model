@@ -114,7 +114,7 @@ body {
 }
 
 .logo-sub {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -124,7 +124,7 @@ body {
 .header-badge {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   letter-spacing: 0.12em;
   color: var(--home);
   border: 1px solid var(--home);
@@ -217,7 +217,7 @@ body {
 .team-side-label {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -445,7 +445,7 @@ body {
 
 .verdict-label {
   font-family: var(--font-display);
-  font-size: 0.65rem;
+  font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   color: var(--text-muted);
@@ -507,7 +507,7 @@ body {
 }
 
 .elo-score-label {
-  font-size: 0.6rem;
+  font-size: 0.78rem;
   letter-spacing: 0.14em;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -522,7 +522,7 @@ body {
 
 .elo-divider-label {
   font-family: var(--font-display);
-  font-size: 0.65rem;
+  font-size: 0.80rem;
   font-weight: 800;
   letter-spacing: 0.14em;
   color: var(--text-dim);
@@ -650,7 +650,7 @@ body {
 }
 
 .stat-label {
-  font-size: clamp(0.55rem, 1.2vw, 0.65rem);
+  font-size: clamp(0.72rem, 1.5vw, 0.82rem);
   letter-spacing: 0.1em;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -661,7 +661,7 @@ body {
 .footer {
   text-align: center;
   padding: 1.5rem clamp(1rem, 4vw, 2.5rem);
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   color: var(--text-dim);
   letter-spacing: 0.04em;
   border-top: 1px solid var(--border);
@@ -793,19 +793,29 @@ body {
 .nav-link {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
-  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
   transition: color 0.2s;
   position: relative;
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  padding: 0.25rem 0;
 }
 
 .nav-link:hover { color: var(--text); }
+
+.nav-link--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.nav-link--disabled:hover { color: var(--text-muted); }
 
 .nav-dot {
   width: 6px; height: 6px;
@@ -827,7 +837,7 @@ body {
 
 .hero-eyebrow {
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   color: var(--home);
@@ -857,13 +867,13 @@ body {
 
 .tab-btn {
   flex: 1;
-  padding: 0.8rem 1rem;
+  padding: 0.85rem 1rem;
   background: transparent;
   border: none;
   color: var(--text-muted);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   letter-spacing: 0.05em;
   cursor: pointer;
   transition: color 0.2s, background 0.2s;
@@ -903,7 +913,7 @@ body {
 
 .report-section-title {
   font-family: var(--font-display);
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.2em;
   color: var(--text-muted);
@@ -927,7 +937,7 @@ body {
 
 .report-confidence-label {
   font-family: var(--font-display);
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--text-muted);
@@ -970,7 +980,7 @@ body {
 .h2h-label {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 1.2;
@@ -985,7 +995,7 @@ body {
 }
 
 .h2h-sub {
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1069,7 +1079,7 @@ body {
 .odds-team {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   line-height: 1.2;
@@ -1088,14 +1098,14 @@ body {
 }
 
 .odds-sub {
-  font-size: 0.6rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .odds-disclaimer {
-  font-size: 0.68rem;
+  font-size: 0.82rem;
   color: var(--text-dim);
   line-height: 1.5;
 }
@@ -1154,7 +1164,7 @@ body {
 
 .step-num {
   font-family: var(--font-display);
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.2em;
   color: var(--home);
@@ -1202,7 +1212,7 @@ body {
 .feature-cat {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--home);
@@ -1281,7 +1291,7 @@ body {
     gap: 0.6rem;
   }
   .tab-btn {
-    font-size: 0.68rem;
+    font-size: 0.82rem;
     padding: 0.75rem 0.5rem;
   }
 }
