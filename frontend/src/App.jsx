@@ -39,6 +39,15 @@ export default function App() {
   const [prediction, setPrediction]     = useState(null);
   const [revealed, setRevealed]         = useState(false);
   const [activeTab, setActiveTab]       = useState("prediction"); // prediction | report | howit
+  const tabSectionRef = useRef(null);
+
+  const switchTab = useCallback((tab) => {
+    setActiveTab(tab);
+    // Scroll to tab section smoothly after a brief paint delay
+    setTimeout(() => {
+      tabSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,7 +82,7 @@ export default function App() {
       const data = await res.json();
       if (typeof data.home_win_probability !== "number") throw new Error("Unexpected response format.");
       setPrediction(data);
-      setActiveTab("prediction");
+      switchTab("prediction");
       setTimeout(() => setRevealed(true), 50);
     } catch (err) {
       setError(err.message);
@@ -97,10 +106,15 @@ export default function App() {
             </div>
           </div>
           <nav className="header-nav">
-            <a href="#how-it-works" className="nav-link" onClick={e => { e.preventDefault(); setActiveTab("howit"); }}>How it works</a>
-            <a href="#report" className="nav-link" onClick={e => { e.preventDefault(); if(prediction) setActiveTab("report"); }}>
+            <button className="nav-link" onClick={() => switchTab("howit")} type="button">How it works</button>
+            <button
+              className={`nav-link ${!prediction ? "nav-link--disabled" : ""}`}
+              onClick={() => prediction && switchTab("report")}
+              title={!prediction ? "Run a prediction first" : ""}
+              type="button"
+            >
               Analysis {prediction && <span className="nav-dot" />}
-            </a>
+            </button>
           </nav>
           <div className="header-badge">ML POWERED</div>
         </div>
@@ -151,22 +165,25 @@ export default function App() {
           </button>
         </div>
 
-        {/* Tab bar — only show when prediction exists */}
-        {prediction && (
-          <div className="tab-bar">
-            {[
-              { id: "prediction", label: "⚡ Prediction" },
-              { id: "report",     label: "📊 Detailed Report" },
-              { id: "howit",      label: "🧠 How It Works" },
-            ].map(t => (
-              <button
-                key={t.id}
-                className={`tab-btn ${activeTab === t.id ? "tab-btn--active" : ""}`}
-                onClick={() => setActiveTab(t.id)}
-                type="button"
-              >{t.label}</button>
-            ))}
-          </div>
+        {/* Tab bar — only show when prediction exists OR howit tab active */}
+        {(prediction || activeTab === "howit") && (
+          <>
+            <div ref={tabSectionRef} style={{ scrollMarginTop: "80px" }} />
+            <div className="tab-bar">
+              {[
+                { id: "prediction", label: "⚡ Prediction",    show: !!prediction },
+                { id: "report",     label: "📊 Detailed Report", show: !!prediction },
+                { id: "howit",      label: "🧠 How It Works",  show: true },
+              ].filter(t => t.show || t.id === "howit").map(t => (
+                <button
+                  key={t.id}
+                  className={`tab-btn ${activeTab === t.id ? "tab-btn--active" : ""} ${!t.show && t.id !== "howit" ? "tab-btn--hidden" : ""}`}
+                  onClick={() => switchTab(t.id)}
+                  type="button"
+                >{t.label}</button>
+              ))}
+            </div>
+          </>
         )}
 
         {/* ── TAB: Prediction ── */}
@@ -179,10 +196,8 @@ export default function App() {
           <DetailedReport prediction={prediction} homeTeam={homeTeam} awayTeam={awayTeam} revealed={revealed} />
         )}
 
-        {/* ── TAB: How It Works (always available) ── */}
-        {activeTab === "howit" && (
-          <HowItWorks />
-        )}
+        {/* ── TAB: How It Works (always available via nav or tab) ── */}
+        {activeTab === "howit" && <HowItWorks />}
 
         {/* Stats strip */}
         <div className="stats-strip">
