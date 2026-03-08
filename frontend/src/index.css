@@ -1506,3 +1506,421 @@ body {
     font-size: 1.3rem;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   MULTI-PAGE SPA — page heroes, content blocks, nav active states
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Logo as button ──────────────────────────────────────────────────────── */
+.logo-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+}
+
+/* ── Header right slot ───────────────────────────────────────────────────── */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+/* ── Nav active + back link ──────────────────────────────────────────────── */
+.nav-link--active {
+  color: var(--home) !important;
+}
+
+.nav-back {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+/* ── Page hero (inner pages) ─────────────────────────────────────────────── */
+.page-hero {
+  padding: clamp(3rem, 8vw, 6rem) clamp(1rem, 4vw, 2.5rem) clamp(1.5rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--border);
+}
+
+.page-hero-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.page-hero-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(3.5rem, 10vw, 7rem);
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.page-hero-title .accent {
+  color: var(--home);
+  font-style: italic;
+  display: block;
+}
+
+/* ── Page content block wrapper ──────────────────────────────────────────── */
+.page-content-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── Page-nav cards (home page) ──────────────────────────────────────────── */
+.page-nav-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.page-nav-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  text-align: left;
+}
+
+.page-nav-card:hover {
+  border-color: var(--home);
+  background: var(--surface-2);
+  transform: translateY(-2px);
+}
+
+.page-nav-card-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.page-nav-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-nav-card-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  margin-bottom: 0.25rem;
+}
+
+.page-nav-card-sub {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.page-nav-card-arrow {
+  font-size: 1.25rem;
+  color: var(--text-dim);
+  transition: transform 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.page-nav-card:hover .page-nav-card-arrow {
+  transform: translateX(4px);
+  color: var(--home);
+}
+
+/* ── Leagues summary bar ─────────────────────────────────────────────────── */
+.leagues-summary-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.leagues-summary-item {
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+
+.leagues-summary-item:last-child { border-right: none; }
+
+.leagues-summary-val {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  color: var(--home);
+  line-height: 1;
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.leagues-summary-lbl {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ── League cards grid ───────────────────────────────────────────────────── */
+.leagues-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.league-card {
+  display: grid;
+  grid-template-columns: 28px 2.4rem 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem clamp(1.25rem, 3vw, 1.75rem);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  transition: background 0.18s;
+}
+
+.league-card:nth-child(2n)      { border-right: none; }
+.league-card:nth-last-child(-n+2) { border-bottom: none; }
+.league-card:last-child         { border-bottom: none; }
+.league-card:hover              { background: var(--surface-2); }
+.league-card:hover .league-card-name { color: var(--home); }
+
+.league-card-num {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.league-card-flag  { font-size: 1.75rem; line-height: 1; }
+
+.league-card-body  { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.league-card-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(0.9rem, 2vw, 1.05rem);
+  color: var(--text);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  transition: color 0.18s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.league-card-country {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.league-card-stats  { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+.league-card-stat   { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+
+.league-card-stat-val {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1rem;
+  color: var(--home);
+  line-height: 1;
+}
+
+.league-card-stat-lbl {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.league-card-divider { width: 1px; height: 30px; background: var(--border); }
+
+/* ── How It Works blocks ─────────────────────────────────────────────────── */
+.hiw-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.hiw-block-title {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding: 1.25rem clamp(1.25rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.steps-list { display: flex; flex-direction: column; }
+
+.step-item {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  padding: 1.4rem clamp(1.25rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+
+.step-item:last-child { border-bottom: none; }
+.step-item:hover      { background: var(--surface-2); }
+
+.step-icon  { font-size: 1.6rem; line-height: 1; flex-shrink: 0; margin-top: 2px; }
+.step-body  { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.step-num {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--home);
+}
+
+.step-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.step-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+  max-width: 580px;
+}
+
+/* Features table */
+.features-table { display: flex; flex-direction: column; }
+
+.feature-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+
+.feature-row:last-child { border-bottom: none; }
+
+.feature-cat {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--home);
+  padding: 0.75rem 1.25rem;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+}
+
+.feature-items {
+  padding: 0.75rem 1.25rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+}
+
+/* Models grid */
+.models-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+
+.model-card {
+  padding: 1.5rem clamp(1rem, 3vw, 1.75rem);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition: background 0.18s;
+}
+
+.model-card:last-child { border-right: none; }
+.model-card:hover      { background: var(--surface-2); }
+
+.model-badge {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--home);
+  text-transform: uppercase;
+}
+
+.model-name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.model-detail {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Page note ────────────────────────────────────────────────────────────── */
+.page-note {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page-nav-cards        { grid-template-columns: 1fr; }
+  .leagues-summary-bar   { grid-template-columns: repeat(2, 1fr); }
+  .leagues-summary-item:nth-child(2) { border-right: none; }
+  .leagues-summary-item:nth-child(3),
+  .leagues-summary-item:nth-child(4) { border-top: 1px solid var(--border); }
+  .models-grid           { grid-template-columns: 1fr; }
+  .model-card            { border-right: none; border-bottom: 1px solid var(--border); }
+  .model-card:last-child { border-bottom: none; }
+}
+
+@media (max-width: 640px) {
+  .leagues-cards-grid    { grid-template-columns: 1fr; }
+  .league-card           { border-right: none; }
+  .league-card:nth-last-child(-n+2) { border-bottom: 1px solid var(--border); }
+  .league-card:last-child           { border-bottom: none; }
+  .feature-row           { grid-template-columns: 90px 1fr; }
+}
+
+@media (max-width: 480px) {
+  .league-card           { grid-template-columns: 24px 1.8rem 1fr; }
+  .league-card-stats     { display: none; }
+  .header-right .header-badge { display: none; }
+}
